@@ -1,0 +1,22 @@
+# 本地 Python 环境和缓存
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# 密钥和本地配置
+.env
+
+# Git、编辑器和系统文件
+.git/
+.gitignore
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 当前镜像运行不需要的学习资料和本地数据
+docs/
+scripts/
+data/
+README.md

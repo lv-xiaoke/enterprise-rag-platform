@@ -1,0 +1,252 @@
+{
+  "document": "data/documents/sample.pdf",
+  "baseline": {
+    "chunk_size": 200,
+    "overlap": 40,
+    "top_k": 3
+  },
+  "cases": [
+    {
+      "id": "fact-01",
+      "category": "direct_fact",
+      "question": "这份测试 PDF 一共有多少页？",
+      "answerable": true,
+      "expected_answer": "这份测试 PDF 一共有 3 页。",
+      "expected_points": [
+        "3 页"
+      ],
+      "retrieved_sources": [
+        "PDF 文本提取测试样例 - 第 3 页\n 第 3 页：文本提取验证清单\n你可以检查下面这些结果：\n1. PDF 总页数应该是 3 页。\n2. 提取结果中应该能够找到中文“这是一个专门用于本地开发测试的简单 PDF”。\n3. 提取结果中应该能够找到英文“selectable text for extraction testing”。\n4. 提取结果中应该能够找到关键词：RAG、Embedding、",
+        "PDF 文本提取测试样例 - 第 1 页\n PDF 文本提取测试样例\n用途\n这是一个专门用于本地开发测试的简单 PDF。文件共 3\n页，没有密码，正文由真正的文本构成，因此可以用鼠标选中并复制，也适合使用 Python\nPDF 库进行文本提取。\n核对句子\n第一句：RAG 在生成回答前先检索相关资料，再把检索结果作为上下文提供给大模型。\n第二句：Embedding 可以把文本转换成向量，用于计算语义",
+        "次测试时，可以直接搜索“Embedding”或“FastAPI”，确认提取出的文本和这里看到的内容一致\n。"
+      ],
+      "model_answer": "3 页。",
+      "retrieval_hit": true,
+      "answer_correct": true,
+      "notes": ""
+    },
+    {
+      "id": "fact-02",
+      "category": "direct_fact",
+      "question": "RAG 的英文全称和中文常用译名分别是什么？",
+      "answerable": true,
+      "expected_answer": "RAG 的英文全称是 Retrieval-Augmented Generation，中文常译为检索增强生成。",
+      "expected_points": [
+        "Retrieval-Augmented Generation",
+        "检索增强生成"
+      ],
+      "retrieved_sources": [
+        "PDF 文本提取测试样例 - 第 2 页\n 第 2 页：Mini RAG 示例知识\n什么是 RAG？\nRAG 是 Retrieval-Augmented Generation 的缩写，中文常译为“检索增强生成”。一个\n基础流程通常包括：接收用户问题、检索相关文档、拼接上下文、调用大模型生成回答。\n为什么要切分文档？\n如果把很长的文档一次性作为一个整体进行向量化，检索结果通常不够精确。把文档切分\n成",
+        "果把很长的文档一次性作为一个整体进行向量化，检索结果通常不够精确。把文档切分\n成较小的 chunk，可以让系统更容易找到与问题真正相关的片段。\n一个简单的测试表\n编号\n关键词\n说明\n1\nRAG\n检索外部资料后再生成回答\n2\nEmbedding\n把文本转换为向量表示\n3\nChunk\n文档切分后的文本片段\n核对关键词：Retrieval-Augmented Generation、chunk、向量。",
+        "sting”。\n4. 提取结果中应该能够找到关键词：RAG、Embedding、FastAPI、Chunk。\n5. 文件不包含账号、密码、API\nKey、真实个人信息或其他敏感资料，可以安全地作为项目测试样例。\n最终核对句：如果你能完整提取这一句话，说明最基础的 PDF\n文本读取流程已经正常工作。\nSample ID: mini-rag-pdf-test-001"
+      ],
+      "model_answer": "RAG 的英文全称是 Retrieval-Augmented Generation，中文常译为“检索增强生成”。",
+      "retrieval_hit": true,
+      "answer_correct": true,
+      "notes": ""
+    },
+    {
+      "id": "fact-03",
+      "category": "direct_fact",
+      "question": "文档介绍的基础 RAG 流程包括哪些步骤？",
+      "answerable": true,
+      "expected_answer": "基础流程包括接收用户问题、检索相关文档、拼接上下文、调用大模型生成回答。",
+      "expected_points": [
+        "接收用户问题",
+        "检索相关文档",
+        "拼接上下文",
+        "调用大模型生成回答"
+      ],
+      "retrieved_sources": [
+        "PDF 文本提取测试样例 - 第 2 页\n 第 2 页：Mini RAG 示例知识\n什么是 RAG？\nRAG 是 Retrieval-Augmented Generation 的缩写，中文常译为“检索增强生成”。一个\n基础流程通常包括：接收用户问题、检索相关文档、拼接上下文、调用大模型生成回答。\n为什么要切分文档？\n如果把很长的文档一次性作为一个整体进行向量化，检索结果通常不够精确。把文档切分\n成",
+        "果把很长的文档一次性作为一个整体进行向量化，检索结果通常不够精确。把文档切分\n成较小的 chunk，可以让系统更容易找到与问题真正相关的片段。\n一个简单的测试表\n编号\n关键词\n说明\n1\nRAG\n检索外部资料后再生成回答\n2\nEmbedding\n把文本转换为向量表示\n3\nChunk\n文档切分后的文本片段\n核对关键词：Retrieval-Augmented Generation、chunk、向量。",
+        "sting”。\n4. 提取结果中应该能够找到关键词：RAG、Embedding、FastAPI、Chunk。\n5. 文件不包含账号、密码、API\nKey、真实个人信息或其他敏感资料，可以安全地作为项目测试样例。\n最终核对句：如果你能完整提取这一句话，说明最基础的 PDF\n文本读取流程已经正常工作。\nSample ID: mini-rag-pdf-test-001"
+      ],
+      "model_answer": "基础 RAG 流程包括：接收用户问题、检索相关文档、拼接上下文、调用大模型生成回答。",
+      "retrieval_hit": true,
+      "answer_correct": true,
+      "notes": ""
+    },
+    {
+      "id": "fact-04",
+      "category": "direct_fact",
+      "question": "Embedding 在文档中被描述为什么作用？",
+      "answerable": true,
+      "expected_answer": "Embedding 可以把文本转换成向量，用于计算语义相似度。",
+      "expected_points": [
+        "文本转换成向量",
+        "语义相似度"
+      ],
+      "retrieved_sources": [
+        "文提供给大模型。\n第二句：Embedding 可以把文本转换成向量，用于计算语义相似度。\n第三句：FastAPI 可以用来快速构建 Python Web API。\nEnglish check: This PDF contains selectable text for extraction testing.\n建议：第一次测试时，可以直接搜索“Embedding”或“FastAPI”，确认提取出的文",
+        "果把很长的文档一次性作为一个整体进行向量化，检索结果通常不够精确。把文档切分\n成较小的 chunk，可以让系统更容易找到与问题真正相关的片段。\n一个简单的测试表\n编号\n关键词\n说明\n1\nRAG\n检索外部资料后再生成回答\n2\nEmbedding\n把文本转换为向量表示\n3\nChunk\n文档切分后的文本片段\n核对关键词：Retrieval-Augmented Generation、chunk、向量。",
+        "sting”。\n4. 提取结果中应该能够找到关键词：RAG、Embedding、FastAPI、Chunk。\n5. 文件不包含账号、密码、API\nKey、真实个人信息或其他敏感资料，可以安全地作为项目测试样例。\n最终核对句：如果你能完整提取这一句话，说明最基础的 PDF\n文本读取流程已经正常工作。\nSample ID: mini-rag-pdf-test-001"
+      ],
+      "model_answer": "Embedding 的作用是：把文本转换为向量表示，用于计算语义相似度。",
+      "retrieval_hit": true,
+      "answer_correct": true,
+      "notes": ""
+    },
+    {
+      "id": "fact-05",
+      "category": "direct_fact",
+      "question": "FastAPI 在文档中可以用来做什么？",
+      "answerable": true,
+      "expected_answer": "FastAPI 可以用来快速构建 Python Web API。",
+      "expected_points": [
+        "快速构建",
+        "Python Web API"
+      ],
+      "retrieved_sources": [
+        "文提供给大模型。\n第二句：Embedding 可以把文本转换成向量，用于计算语义相似度。\n第三句：FastAPI 可以用来快速构建 Python Web API。\nEnglish check: This PDF contains selectable text for extraction testing.\n建议：第一次测试时，可以直接搜索“Embedding”或“FastAPI”，确认提取出的文",
+        "次测试时，可以直接搜索“Embedding”或“FastAPI”，确认提取出的文本和这里看到的内容一致\n。",
+        "sting”。\n4. 提取结果中应该能够找到关键词：RAG、Embedding、FastAPI、Chunk。\n5. 文件不包含账号、密码、API\nKey、真实个人信息或其他敏感资料，可以安全地作为项目测试样例。\n最终核对句：如果你能完整提取这一句话，说明最基础的 PDF\n文本读取流程已经正常工作。\nSample ID: mini-rag-pdf-test-001"
+      ],
+      "model_answer": "根据参考资料，FastAPI 可以用来快速构建 Python Web API。",
+      "retrieval_hit": true,
+      "answer_correct": true,
+      "notes": ""
+    },
+    {
+      "id": "fact-06",
+      "category": "direct_fact",
+      "question": "这份测试 PDF 的 Sample ID 是什么？",
+      "answerable": true,
+      "expected_answer": "Sample ID 是 mini-rag-pdf-test-001。",
+      "expected_points": [
+        "mini-rag-pdf-test-001"
+      ],
+      "retrieved_sources": [
+        "sting”。\n4. 提取结果中应该能够找到关键词：RAG、Embedding、FastAPI、Chunk。\n5. 文件不包含账号、密码、API\nKey、真实个人信息或其他敏感资料，可以安全地作为项目测试样例。\n最终核对句：如果你能完整提取这一句话，说明最基础的 PDF\n文本读取流程已经正常工作。\nSample ID: mini-rag-pdf-test-001",
+        "PDF 文本提取测试样例 - 第 3 页\n 第 3 页：文本提取验证清单\n你可以检查下面这些结果：\n1. PDF 总页数应该是 3 页。\n2. 提取结果中应该能够找到中文“这是一个专门用于本地开发测试的简单 PDF”。\n3. 提取结果中应该能够找到英文“selectable text for extraction testing”。\n4. 提取结果中应该能够找到关键词：RAG、Embedding、",
+        "PDF 文本提取测试样例 - 第 1 页\n PDF 文本提取测试样例\n用途\n这是一个专门用于本地开发测试的简单 PDF。文件共 3\n页，没有密码，正文由真正的文本构成，因此可以用鼠标选中并复制，也适合使用 Python\nPDF 库进行文本提取。\n核对句子\n第一句：RAG 在生成回答前先检索相关资料，再把检索结果作为上下文提供给大模型。\n第二句：Embedding 可以把文本转换成向量，用于计算语义"
+      ],
+      "model_answer": "Sample ID 是 mini-rag-pdf-test-001。",
+      "retrieval_hit": true,
+      "answer_correct": true,
+      "notes": ""
+    },
+    {
+      "id": "summary-01",
+      "category": "summary",
+      "question": "这份 PDF 的主要用途是什么？",
+      "answerable": true,
+      "expected_answer": "它是一份用于本地开发和 PDF 文本提取验证的安全测试样例，正文可以选中复制。",
+      "expected_points": [
+        "本地开发测试",
+        "PDF 文本提取",
+        "文本可以选中或复制"
+      ],
+      "retrieved_sources": [
+        "PDF 文本提取测试样例 - 第 1 页\n PDF 文本提取测试样例\n用途\n这是一个专门用于本地开发测试的简单 PDF。文件共 3\n页，没有密码，正文由真正的文本构成，因此可以用鼠标选中并复制，也适合使用 Python\nPDF 库进行文本提取。\n核对句子\n第一句：RAG 在生成回答前先检索相关资料，再把检索结果作为上下文提供给大模型。\n第二句：Embedding 可以把文本转换成向量，用于计算语义",
+        "PDF 文本提取测试样例 - 第 2 页\n 第 2 页：Mini RAG 示例知识\n什么是 RAG？\nRAG 是 Retrieval-Augmented Generation 的缩写，中文常译为“检索增强生成”。一个\n基础流程通常包括：接收用户问题、检索相关文档、拼接上下文、调用大模型生成回答。\n为什么要切分文档？\n如果把很长的文档一次性作为一个整体进行向量化，检索结果通常不够精确。把文档切分\n成",
+        "sting”。\n4. 提取结果中应该能够找到关键词：RAG、Embedding、FastAPI、Chunk。\n5. 文件不包含账号、密码、API\nKey、真实个人信息或其他敏感资料，可以安全地作为项目测试样例。\n最终核对句：如果你能完整提取这一句话，说明最基础的 PDF\n文本读取流程已经正常工作。\nSample ID: mini-rag-pdf-test-001"
+      ],
+      "model_answer": "这份 PDF 的主要用途是用于本地开发测试的简单样例文件，可测试 PDF 文本提取流程。",
+      "retrieval_hit": true,
+      "answer_correct": true,
+      "notes": ""
+    },
+    {
+      "id": "summary-02",
+      "category": "summary",
+      "question": "根据文档，概括一个最基础的 RAG 如何从文档得到回答。",
+      "answerable": true,
+      "expected_answer": "先处理并切分文档，把文本转换成向量；用户提问后检索相关片段，拼接为上下文，再让大模型生成回答。",
+      "expected_points": [
+        "切分文档",
+        "文本转换成向量",
+        "检索相关片段",
+        "上下文",
+        "大模型生成回答"
+      ],
+      "retrieved_sources": [
+        "PDF 文本提取测试样例 - 第 2 页\n 第 2 页：Mini RAG 示例知识\n什么是 RAG？\nRAG 是 Retrieval-Augmented Generation 的缩写，中文常译为“检索增强生成”。一个\n基础流程通常包括：接收用户问题、检索相关文档、拼接上下文、调用大模型生成回答。\n为什么要切分文档？\n如果把很长的文档一次性作为一个整体进行向量化，检索结果通常不够精确。把文档切分\n成",
+        "果把很长的文档一次性作为一个整体进行向量化，检索结果通常不够精确。把文档切分\n成较小的 chunk，可以让系统更容易找到与问题真正相关的片段。\n一个简单的测试表\n编号\n关键词\n说明\n1\nRAG\n检索外部资料后再生成回答\n2\nEmbedding\n把文本转换为向量表示\n3\nChunk\n文档切分后的文本片段\n核对关键词：Retrieval-Augmented Generation、chunk、向量。",
+        "PDF 文本提取测试样例 - 第 1 页\n PDF 文本提取测试样例\n用途\n这是一个专门用于本地开发测试的简单 PDF。文件共 3\n页，没有密码，正文由真正的文本构成，因此可以用鼠标选中并复制，也适合使用 Python\nPDF 库进行文本提取。\n核对句子\n第一句：RAG 在生成回答前先检索相关资料，再把检索结果作为上下文提供给大模型。\n第二句：Embedding 可以把文本转换成向量，用于计算语义"
+      ],
+      "model_answer": "最基础的 RAG 流程是：接收用户问题，从切分后的文档片段（chunk）中检索相关文档，拼接上下文，再调用大模型生成回答。",
+      "retrieval_hit": true,
+      "answer_correct": true,
+      "notes": ""
+    },
+    {
+      "id": "compare-01",
+      "category": "comparison",
+      "question": "把长文档整体向量化与先切成较小 Chunk 相比，有什么区别？",
+      "answerable": true,
+      "expected_answer": "长文档整体向量化通常会使检索不够精确；切成较小 Chunk 后，系统更容易找到与问题真正相关的片段。",
+      "expected_points": [
+        "整体向量化不够精确",
+        "更容易找到相关片段"
+      ],
+      "retrieved_sources": [
+        "果把很长的文档一次性作为一个整体进行向量化，检索结果通常不够精确。把文档切分\n成较小的 chunk，可以让系统更容易找到与问题真正相关的片段。\n一个简单的测试表\n编号\n关键词\n说明\n1\nRAG\n检索外部资料后再生成回答\n2\nEmbedding\n把文本转换为向量表示\n3\nChunk\n文档切分后的文本片段\n核对关键词：Retrieval-Augmented Generation、chunk、向量。",
+        "PDF 文本提取测试样例 - 第 2 页\n 第 2 页：Mini RAG 示例知识\n什么是 RAG？\nRAG 是 Retrieval-Augmented Generation 的缩写，中文常译为“检索增强生成”。一个\n基础流程通常包括：接收用户问题、检索相关文档、拼接上下文、调用大模型生成回答。\n为什么要切分文档？\n如果把很长的文档一次性作为一个整体进行向量化，检索结果通常不够精确。把文档切分\n成",
+        "文提供给大模型。\n第二句：Embedding 可以把文本转换成向量，用于计算语义相似度。\n第三句：FastAPI 可以用来快速构建 Python Web API。\nEnglish check: This PDF contains selectable text for extraction testing.\n建议：第一次测试时，可以直接搜索“Embedding”或“FastAPI”，确认提取出的文"
+      ],
+      "model_answer": "把长文档整体向量化时，检索结果通常不够精确；先切成较小 Chunk，能让系统更容易找到与问题真正相关的片段，检索更精确。",
+      "retrieval_hit": true,
+      "answer_correct": true,
+      "notes": ""
+    },
+    {
+      "id": "compare-02",
+      "category": "comparison",
+      "question": "Chunk 和 Embedding 在 RAG 中分别负责什么？",
+      "answerable": true,
+      "expected_answer": "Chunk 负责把文档切成较小文本片段，Embedding 负责把文本转换成向量表示。",
+      "expected_points": [
+        "文档切分后的文本片段",
+        "文本转换为向量"
+      ],
+      "retrieved_sources": [
+        "果把很长的文档一次性作为一个整体进行向量化，检索结果通常不够精确。把文档切分\n成较小的 chunk，可以让系统更容易找到与问题真正相关的片段。\n一个简单的测试表\n编号\n关键词\n说明\n1\nRAG\n检索外部资料后再生成回答\n2\nEmbedding\n把文本转换为向量表示\n3\nChunk\n文档切分后的文本片段\n核对关键词：Retrieval-Augmented Generation、chunk、向量。",
+        "sting”。\n4. 提取结果中应该能够找到关键词：RAG、Embedding、FastAPI、Chunk。\n5. 文件不包含账号、密码、API\nKey、真实个人信息或其他敏感资料，可以安全地作为项目测试样例。\n最终核对句：如果你能完整提取这一句话，说明最基础的 PDF\n文本读取流程已经正常工作。\nSample ID: mini-rag-pdf-test-001",
+        "PDF 文本提取测试样例 - 第 2 页\n 第 2 页：Mini RAG 示例知识\n什么是 RAG？\nRAG 是 Retrieval-Augmented Generation 的缩写，中文常译为“检索增强生成”。一个\n基础流程通常包括：接收用户问题、检索相关文档、拼接上下文、调用大模型生成回答。\n为什么要切分文档？\n如果把很长的文档一次性作为一个整体进行向量化，检索结果通常不够精确。把文档切分\n成"
+      ],
+      "model_answer": "根据参考资料：Chunk 负责将长文档切分成较小的文本片段，让系统更容易找到与问题真正相关的片段；Embedding 负责把文本转换为向量表示，用于检索。两者共同服务于 RAG 的检索过程。",
+      "retrieval_hit": true,
+      "answer_correct": true,
+      "notes": ""
+    },
+    {
+      "id": "unknown-01",
+      "category": "unanswerable",
+      "question": "这份 PDF 使用了哪个具体的 Embedding 模型？",
+      "answerable": false,
+      "expected_answer": "文档没有说明具体使用了哪个 Embedding 模型。",
+      "expected_points": [
+        "明确说明文档未提供该信息"
+      ],
+      "retrieved_sources": [
+        "文提供给大模型。\n第二句：Embedding 可以把文本转换成向量，用于计算语义相似度。\n第三句：FastAPI 可以用来快速构建 Python Web API。\nEnglish check: This PDF contains selectable text for extraction testing.\n建议：第一次测试时，可以直接搜索“Embedding”或“FastAPI”，确认提取出的文",
+        "PDF 文本提取测试样例 - 第 1 页\n PDF 文本提取测试样例\n用途\n这是一个专门用于本地开发测试的简单 PDF。文件共 3\n页，没有密码，正文由真正的文本构成，因此可以用鼠标选中并复制，也适合使用 Python\nPDF 库进行文本提取。\n核对句子\n第一句：RAG 在生成回答前先检索相关资料，再把检索结果作为上下文提供给大模型。\n第二句：Embedding 可以把文本转换成向量，用于计算语义",
+        "sting”。\n4. 提取结果中应该能够找到关键词：RAG、Embedding、FastAPI、Chunk。\n5. 文件不包含账号、密码、API\nKey、真实个人信息或其他敏感资料，可以安全地作为项目测试样例。\n最终核对句：如果你能完整提取这一句话，说明最基础的 PDF\n文本读取流程已经正常工作。\nSample ID: mini-rag-pdf-test-001"
+      ],
+      "model_answer": "不知道。",
+      "retrieval_hit": null,
+      "answer_correct": true,
+      "notes": ""
+    },
+    {
+      "id": "unknown-02",
+      "category": "unanswerable",
+      "question": "这份 PDF 的作者是谁，发表于哪一年？",
+      "answerable": false,
+      "expected_answer": "文档没有提供作者和发表年份。",
+      "expected_points": [
+        "明确说明作者和年份均未提供"
+      ],
+      "retrieved_sources": [
+        "PDF 文本提取测试样例 - 第 1 页\n PDF 文本提取测试样例\n用途\n这是一个专门用于本地开发测试的简单 PDF。文件共 3\n页，没有密码，正文由真正的文本构成，因此可以用鼠标选中并复制，也适合使用 Python\nPDF 库进行文本提取。\n核对句子\n第一句：RAG 在生成回答前先检索相关资料，再把检索结果作为上下文提供给大模型。\n第二句：Embedding 可以把文本转换成向量，用于计算语义",
+        "PDF 文本提取测试样例 - 第 3 页\n 第 3 页：文本提取验证清单\n你可以检查下面这些结果：\n1. PDF 总页数应该是 3 页。\n2. 提取结果中应该能够找到中文“这是一个专门用于本地开发测试的简单 PDF”。\n3. 提取结果中应该能够找到英文“selectable text for extraction testing”。\n4. 提取结果中应该能够找到关键词：RAG、Embedding、",
+        "PDF 文本提取测试样例 - 第 2 页\n 第 2 页：Mini RAG 示例知识\n什么是 RAG？\nRAG 是 Retrieval-Augmented Generation 的缩写，中文常译为“检索增强生成”。一个\n基础流程通常包括：接收用户问题、检索相关文档、拼接上下文、调用大模型生成回答。\n为什么要切分文档？\n如果把很长的文档一次性作为一个整体进行向量化，检索结果通常不够精确。把文档切分\n成"
+      ],
+      "model_answer": "根据参考资料，无法得知这份 PDF 的作者和发表年份。",
+      "retrieval_hit": null,
+      "answer_correct": true,
+      "notes": ""
+    }
+  ]
+}
