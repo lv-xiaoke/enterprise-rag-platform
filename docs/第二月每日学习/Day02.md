@@ -250,14 +250,14 @@ docker compose exec -T postgres psql -U rag_app -d day2_database_should_not_exis
 
 ## 验收清单
 
-- [ ] 我能用自己的话解释 PostgreSQL、pgvector、Docker Compose 与命名卷各自解决什么问题，以及它们今天只影响数据层环境。
-- [ ] 已创建唯一核心产物 `docker-compose.yml`，其中只有 PostgreSQL + pgvector 服务、健康检查和 `postgres_data` 命名卷。
-- [ ] 已创建 `.env.example`，本机 `.env` 未提交、未展示、未写入任何真实密码。
-- [ ] `docker compose ps` 显示 PostgreSQL 服务为 `healthy`，并已记录实际输出。
-- [ ] 已实际执行并记录 `vector` 扩展创建与查询结果。
-- [ ] 已验证探针数据在 `docker compose down`（不带 `-v`）和再次启动后仍存在。
-- [ ] 已运行不存在数据库的失败路径，确认原服务仍健康。
-- [ ] 我明确记录了尚未接入 FastAPI、ORM、迁移和 FAISS 替换，它们会作为 Day 3 及后续任务继续完成。
+- [x] 我能用自己的话解释 PostgreSQL、pgvector、Docker Compose 与命名卷各自解决什么问题，以及它们今天只影响数据层环境。
+- [x] 已创建唯一核心产物 `docker-compose.yml`，其中只有 PostgreSQL + pgvector 服务、健康检查和 `postgres_data` 命名卷。
+- [x] 已创建 `.env.example`，本机 `.env` 未提交、未展示、未写入任何真实密码。
+- [x] `docker compose ps` 显示 PostgreSQL 服务为 `healthy`，并已记录实际输出。
+- [x] 已实际执行并记录 `vector` 扩展创建与查询结果。
+- [x] 已验证探针数据在 `docker compose down`（不带 `-v`）和再次启动后仍存在。
+- [x] 已运行不存在数据库的失败路径，确认原服务仍健康。
+- [x] 我明确记录了尚未接入 FastAPI、ORM、迁移和 FAISS 替换，它们会作为 Day 3 及后续任务继续完成。
 
 ## 今日学习记录
 
