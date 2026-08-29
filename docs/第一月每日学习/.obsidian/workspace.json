@@ -1,0 +1,250 @@
+{
+  "main": {
+    "id": "027f875f13cd7767",
+    "type": "split",
+    "children": [
+      {
+        "id": "2b36b5b957b26d20",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "6648d806034f0844",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "月计划.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "月计划"
+            }
+          },
+          {
+            "id": "cadfac195217c665",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "第二月计划.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "第二月计划"
+            }
+          },
+          {
+            "id": "454b383014237743",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "制造企业设备运维知识库一月计划.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "制造企业设备运维知识库一月计划"
+            }
+          }
+        ],
+        "currentTab": 2
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "ca183edb7631a1c5",
+    "type": "split",
+    "children": [
+      {
+        "id": "5d22543809759812",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "0c1eff3b682df72c",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "80af808008f236a8",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          },
+          {
+            "id": "9d3188740c60eeef",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 200
+  },
+  "right": {
+    "id": "936d35d11c7085f4",
+    "type": "split",
+    "children": [
+      {
+        "id": "11ff10a98a3ab01f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "52c2502b1e14d0ac",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "每日学习计划生成提示词.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "反向链接"
+            }
+          },
+          {
+            "id": "0c29dc56f127b902",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "每日学习计划生成提示词.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "出链"
+            }
+          },
+          {
+            "id": "9303c033d9879845",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          },
+          {
+            "id": "7a78704332f390d1",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "添加笔记属性"
+            }
+          },
+          {
+            "id": "c6d0dbfc66f4e9aa",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "每日学习计划生成提示词.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "大纲"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false,
+      "bases:新建数据库": false
+    }
+  },
+  "active": "454b383014237743",
+  "lastOpenFiles": [
+    "第二月计划.md",
+    "月计划.md",
+    "制造企业设备运维知识库一月计划.md",
+    "Day30.md",
+    "appendix/Day29-RAG与Agent面试回答.md",
+    "Day29.md",
+    "appendix/Day30-项目模拟面试稿.md",
+    "Day28.md",
+    "appendix/Day27-Python与后端面试回答.md",
+    "Day27.md",
+    "appendix/BERT-适合任务解释.md",
+    "appendix/解释根据“是”这个位置结果预测.md",
+    "appendix/QKV例子详解.md",
+    "appendix/KV Cache详解.md",
+    "appendix/Day28-Transformer与LLM面试回答.md",
+    "Day26.md",
+    "Day25.md",
+    "appendix/使用docker的好处.md",
+    "附件",
+    "Day24.md",
+    "Day17.md",
+    "Day16.md",
+    "Day19.md",
+    "Day20.md",
+    "Day21.md",
+    "Day22.md",
+    "appendix/中文无法正常显示.md"
+  ]
+}
