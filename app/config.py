@@ -20,3 +20,9 @@ LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "")
 LLM_MODEL = os.getenv("LLM_MODEL", "")
+
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "127.0.0.1")
+POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
+POSTGRES_DB = os.getenv("POSTGRES_DB", "")
+POSTGRES_USER = os.getenv("POSTGRES_USER", "")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "")
