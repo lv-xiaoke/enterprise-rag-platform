@@ -15,6 +15,9 @@ Day 1 已用运行证据确认：当前 RAG 的 FAISS 索引只存在内存中�
 - **Docker Compose** 是把容器、端口、健康检查和存储卷写成一份可复现配置的工具。**命名卷**是 Docker 管理的持久磁盘空间；删掉并重建容器后数据仍在，才能证明不是“容器还没关所以看起来没丢”。它改变的是数据层运行环境，不改变接口层、检索层或生成层。[[Docker Compose]]
 - 仓库 README 记录的是上一轮 30 天 Mini RAG 学习已完成；第二月主计划则明确要求从 Day 2 开始建立新环境。当前仓库也确实没有 Compose 文件、`.env.example`、PostgreSQL 驱动或数据库 URL 配置。以第二月主计划为本日依据，保留 README 和所有未提交改动，今天不要把“旧项目已完成”误当成“第二月环境已完成”。最常见的错误是执行 `docker compose down -v` 做“重启”；`-v` 会删除命名卷，恰好破坏今天要验证的持久化。
 
+Postgres ： 数据库
+SQL = Structured Query Language
+
 ## 步骤 1：确认 Docker 与仓库起点
 
 先确认本机有可用的 Docker Compose，并再次确认今天不会覆盖已有配置。这里不启动服务、不读取 `.env`；完成后应能判断是继续搭建环境，还是先解决 Docker Desktop 前置条件。
