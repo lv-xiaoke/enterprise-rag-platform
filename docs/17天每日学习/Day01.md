@@ -1,1117 +1,203 @@
-# Day 1：接通 PostgreSQL 并建立可回滚的 Alembic 基线
+# Day 1：建立 PostgreSQL 连接与可回滚迁移基线
 
-今天会在保留现有 SQLite 聊天链路的前提下，为企业 RAG 新增 PostgreSQL/SQLAlchemy 连接层和可回滚的 pgvector 基线迁移，解决应用尚未真正使用持久化向量数据库的问题，并让你能够在面试中解释数据库驱动、ORM 与迁移工具的职责边界。
+今天将直接补齐数据库配置校验和 Alembic 脱敏配置，并完成连接探针与 `upgrade → downgrade → upgrade` 验收，使项目获得安全、可回滚的 PostgreSQL + pgvector 基线，并为面试中的数据库连接、迁移和组件职责问题提供可运行证据。
 
-> 预计用时：60 分钟  
-> 今日唯一核心产物：可连接 PostgreSQL、可执行 `upgrade → downgrade → upgrade` 的数据库基础设施  
-> 对应主计划：Day 1
+> 预计核心用时：约 60 分钟  
+> 今日唯一核心产物：一套能够安全执行连接探针，并可将 vector 扩展升级、回滚、再次升级到 head 的 PostgreSQL/Alembic 基线  
+> 当前真实状态：已完成 
+> 对应总体安排：Day 1
 
-## 一、开始前先明确边界
+## 一、今天完成后的项目变化
 
-### 今天完成什么
+### 升级前
 
-- 将 SQLAlchemy、psycopg、pgvector Python 包和 Alembic 声明为项目直接依赖，并记录实际安装版本。
-- 在 `app/config.py` 中读取 PostgreSQL 配置，新建 `app/db.py` 负责 SQLAlchemy Engine、Session 工厂和连接探针。
-- 保留 `app/database.py` 的 SQLite 聊天历史职责，不迁移 `/chat` 和 `/history`。
-- 初始化 `migrations/`，用第一条迁移启用 PostgreSQL 的 `vector` 扩展，并真实验证升级、回滚、再次升级。
-
-### 今天不做什么
-
-- 不创建 `knowledge_bases`、`documents`、`chunks` 三张业务表；这是 Day 2。
-- 不实现知识库或文档 CRUD；这是 Day 3。
-- 不写入 PDF Chunk 和向量；这是 Day 4。
-- 不改 `/upload`、`/rag/chat` 或现有 FAISS 检索链路。
-- 不删除现有 `alembic/__pycache__/`；缓存文件不是可用迁移源码，也不能作为完成证据。
-
-### 当前真实起点
-
-- `[当前事实]` `app/database.py` 只使用标准库 `sqlite3`，为普通 `/chat` 和 `/history` 保存消息。
-- `[当前事实]` `app/config.py` 当前只读取 LLM 配置，尚未提供 PostgreSQL 应用配置。
-- `[当前事实]` `requirements.txt` 没有声明 SQLAlchemy、psycopg、pgvector 和 Alembic；当前 Python 3.11.7 环境中可导入 SQLAlchemy 2.0.25，但另外三个包未安装，环境里“碰巧已安装”不能替代项目依赖声明。
-- `[当前事实]` `docker-compose.yml` 已使用 `pgvector/pgvector:pg16`，生成本计划时 PostgreSQL 容器状态为 `healthy`，端口映射为 `127.0.0.1:5432`。
-- `[当前事实]` `.env.example` 已声明 `POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD`、`POSTGRES_PORT`；本次只确认了本地 `.env` 存在，没有读取或展示其中的值。
-- `[当前事实]` 仓库没有 `alembic.ini` 和可读的 Alembic 源码，只有被忽略的 `.pyc` 缓存，因此 Day 1 尚未完成。
-- `[当前事实]` 工作区已有多项与今天无关的文档删除、修改和未跟踪文件；必须保留，提交时只暂存今天的文件。
-- `[待实测]` 新增依赖的实际安装版本、数据库连接、迁移升级/回滚结果都要由你运行后记录，不能根据当前容器健康状态提前判定通过。
-
-下面这个版本更适合直接放进你的学习笔记里：先讲名字怎么来的，再讲它们分别干什么，最后联系到你当前项目。
-
-## 二、核心知识铺垫
-
-### 1. PostgreSQL、psycopg 与 SQLAlchemy
-
-先不要急着记定义，先从三个名字开始理解。
-
-#### 1.1 PostgreSQL：真正保存数据的数据库
-
-**名字由来：**
-
-`PostgreSQL` 可以拆成：
-
-```text
-Postgres + SQL
-```
-
-Postgres 最早来自一个叫 **POSTGRES** 的数据库项目，可以粗略理解成：
-
-```text
-Post + Ingres
-```
-
-也就是在早期 Ingres 数据库项目之后继续发展的新数据库。
-
-后来 POSTGRES 加入了对 SQL 的支持，于是逐渐使用了：
-
-```text
-PostgreSQL
-```
-
-这个名字。
-
-所以看到 PostgreSQL，可以先记成：
-
-> **这是数据库本体。**
-
-比如以后企业 RAG 项目里的：
-
-```text
-知识库
-文档
-Chunk
-用户
-权限
-向量
-```
-
-最终都可以真正存进 PostgreSQL。
-
----
-
-#### 1.2 psycopg：Python 和 PostgreSQL 之间的“连接线”
-
-**名字由来：**
-
-`psycopg` 是 PostgreSQL 的一个经典 Python 驱动项目名。
-
-这个名字本身不需要强行拆词记忆，学习阶段直接把它和：
-
-```text
-Python → PostgreSQL
-```
-
-绑定起来即可。
-
-它的作用可以理解成：
-
-> **帮 Python 真正和 PostgreSQL 数据库说话。**
-
-例如你的 Python 程序想执行：
-
-```sql
-SELECT * FROM documents;
-```
-
-最终需要有人把这个请求通过 PostgreSQL 支持的通信方式发送给数据库。
-
-这个底层工作就是 psycopg 负责的。
-
-所以可以记：
-
-```text
-Python
-  ↓
-psycopg
-  ↓
-PostgreSQL
-```
-
-一句话：
-
-> **psycopg 是 Python 连接 PostgreSQL 的数据库驱动。**
-
----
-
-#### 1.3 SQLAlchemy：让 Python 更方便地操作数据库
-
-**名字由来：**
-
-`SQLAlchemy` 可以拆成：
-
-```text
-SQL + Alchemy
-```
-
-其中：
-
-```text
-SQL
-```
-
-就是关系型数据库常用的查询语言。
-
-`Alchemy` 的意思是：
-
-```text
-炼金术
-```
-
-因此可以把 SQLAlchemy 形象地理解成：
-
-> **把比较底层的 SQL 数据库操作，“炼制”成更适合 Python 程序使用的形式。**
-
-比如原本你可能需要直接写：
-
-```sql
-SELECT * FROM documents WHERE id = 1;
-```
-
-使用 SQLAlchemy 后，你可以更多地使用 Python 对象、类和方法组织这些数据库操作。
-
-例如概念上可能写成：
-
-```python
-document = session.get(Document, 1)
-```
-
-因此 SQLAlchemy 不只是“连接数据库”。
-
-它还帮我们处理很多数据库开发中常见的问题，例如：
-
-```text
-数据库连接
-连接池
-事务
-Session
-SQL 查询
-ORM
-```
-
-所以可以先记：
-
-> **SQLAlchemy 是 Python 中更高一层的数据库工具。**
-
----
-
-### 1.4 ORM 是什么？
-
-SQLAlchemy 经常会和一个词一起出现：
-
-```text
-ORM
-```
-
-ORM 全称：
-
-```text
-Object-Relational Mapping
-```
-
-中文叫：
-
-```text
-对象关系映射
-```
-
-先看数据库里的世界。
-
-假设 PostgreSQL 中有一张表：
-
-```text
-documents
-
-id | filename | status
-1  | a.pdf    | ready
-2  | b.pdf    | parsing
-```
-
-而 Python 更习惯使用：
-
-```python
-class Document:
-    id = ...
-    filename = ...
-    status = ...
-```
-
-ORM 做的事情，就是建立两边的对应关系：
-
-```text
-Python                         PostgreSQL
-
-Document 类         ↔          documents 表
-
-document 对象       ↔          表中的一行
-
-document.id         ↔          id 列
-
-document.filename   ↔          filename 列
-```
-
-因此 ORM 可以简单理解成：
-
-> **让我们用 Python 类和对象的方式表示、查询和修改数据库中的表和记录。**
-
-需要注意：
-
-> SQLAlchemy 不等于 ORM。
-
-SQLAlchemy 是一个完整的数据库工具库，而 ORM 是它提供的一项重要能力。
-
----
-
-### 1.5 三者到底是什么关系？
-
-现在把三个东西串起来：
-
-```text
-FastAPI 业务代码
-      ↓
-SQLAlchemy
-      ↓
-psycopg
-      ↓
-PostgreSQL
-```
-
-可以把它们想象成：
-
-```text
-FastAPI
-“我要查询一个 Document”
-        ↓
-
-SQLAlchemy
-“我帮你组织数据库操作和 SQL”
-        ↓
-
-psycopg
-“我负责真正把请求发送给 PostgreSQL”
-        ↓
-
-PostgreSQL
-“我查询真实数据并返回结果”
-```
-
-所以一句话记忆：
-
-> **PostgreSQL 是数据库本体，psycopg 是 Python 到 PostgreSQL 的连接驱动，SQLAlchemy 是我们在 Python 中操作数据库的高级工具层。**
-
----
-
-### 1.6 为什么安装 SQLAlchemy 之后还要安装 psycopg？
-
-这是一个很容易混淆的地方。
-
-你可能会觉得：
-
-```text
-SQLAlchemy 都能操作数据库了，
-为什么还需要 psycopg？
-```
-
-因为 SQLAlchemy 本身并不负责所有数据库的底层通信。
-
-SQLAlchemy 可以支持：
-
-```text
-PostgreSQL
-MySQL
-SQLite
-……
-```
-
-但是不同数据库的通信方式不同，因此通常还需要对应的数据库驱动。
-
-例如：
-
-```text
-SQLAlchemy + psycopg
-        ↓
-PostgreSQL
-
-SQLAlchemy + 某个 MySQL 驱动
-        ↓
-MySQL
-```
-
-因此：
-
-```text
-安装 SQLAlchemy
-```
-
-并不等于：
-
-```text
-已经可以连接 PostgreSQL
-```
-
-你还需要安装：
-
-```text
-psycopg
-```
-
-在本项目中使用：
-
-```text
-postgresql+psycopg://...
-```
-
-也是在明确告诉 SQLAlchemy：
-
-```text
-数据库：PostgreSQL
-驱动：psycopg
-```
-
----
-
-## 2. Engine、Connection、Session 与连接探针
-
-理解 SQLAlchemy 后，接下来需要理解三个经常出现的词：
-
-```text
-Engine
-Connection
-Session
-```
-
----
-
-### 2.1 Engine：数据库连接的总入口
-
-**名字由来：**
-
-`Engine` 本身就是：
-
-```text
-引擎
-```
-
-可以把它理解成：
-
-> **驱动整个数据库访问系统工作的核心入口。**
-
-例如：
-
-```python
-engine = create_engine(DATABASE_URL)
-```
-
-这里不是说：
-
-> “现在已经成功连接数据库了。”
-
-而更像是在创建：
-
-> “以后应该通过什么地址、什么驱动、什么连接池规则去访问数据库。”
-
-Engine 通常负责：
-
-```text
-保存数据库连接配置
-管理连接池
-提供数据库连接
-作为应用访问数据库的统一入口
-```
-
-可以简单想象成：
-
-```text
-Engine
-  │
-  ├── Connection 1
-  ├── Connection 2
-  ├── Connection 3
-  └── ...
-```
-
-因此一个应用通常创建一个可以长期复用的 Engine。
-
----
-
-### 2.2 Connection：真正的一条数据库连接
-
-Engine 本身更像“连接管理中心”。
-
-真正执行 SQL 时，需要获得一条 Connection：
-
-```python
-with engine.connect() as connection:
-    ...
-```
-
-可以理解成：
-
-```text
-Engine
-  ↓
-借给你一条 Connection
-  ↓
-Python 真正和 PostgreSQL 通信
-```
-
-所以：
-
-> **Engine 管理连接，Connection 才是一条实际数据库连接。**
-
----
-
-### 2.3 Session：一次业务操作的数据库工作单元
-
-**名字由来：**
-
-`Session` 就是：
-
 ```text
-会话
+.env / 环境变量
+→ app.config 已能读取 PostgreSQL 配置
+→ app.db 已有 URL、Engine、SessionLocal 和 SELECT 1 探针
+→ 但 build_database_url() 尚未校验空配置
+→ 数据库不可用时探针会直接暴露底层异常
+→ migrations/env.py 的离线 URL 使用 hide_password=False
+→ vector 迁移已有 upgrade/downgrade，但尚无迁移往返实测证据
 ```
 
-在 SQLAlchemy ORM 中，可以把 Session 理解成：
+### 升级后
 
-> **一段业务操作期间，统一管理查询、修改和事务的工作空间。**
-
-例如以后一个 API 请求可能要：
-
-```text
-查询 Document
-      ↓
-修改 Document 状态
-      ↓
-新增 Chunk
-      ↓
-提交事务
-```
-
-这些操作可以放在同一个 Session 中。
-
-例如：
-
-```python
-with SessionLocal() as session:
-    ...
-```
-
-完成后：
-
-```text
-commit
-```
-
-或者发生异常：
-
-```text
-rollback
-```
-
-最后：
-
-```text
-close
-```
-
-因此可以这样区分：
-
-```text
-Engine
-数据库访问的长期基础设施
-
-Session
-一次业务操作期间使用的工作单元
-```
-
-以后 FastAPI 中通常是：
-
-```text
-应用启动
-   ↓
-创建一个 Engine
-
-请求 A
-   ↓
-创建 Session A
-   ↓
-请求结束关闭
-
-请求 B
-   ↓
-创建 Session B
-   ↓
-请求结束关闭
-```
-
-而不是让所有请求共用同一个长期 Session。
-
----
-
-### 2.4 为什么 create_engine() 成功不代表 PostgreSQL 已经连接成功？
-
-这是 SQLAlchemy 很重要的一个特点：
-
-> **Engine 通常采用惰性连接。**
-
-所谓“惰性”，就是：
-
-```text
-现在先创建配置
-真正需要数据库的时候再连接
-```
-
-所以：
-
-```python
-engine = create_engine(DATABASE_URL)
-```
-
-成功只能说明：
-
-```text
-数据库 URL 基本可以被 SQLAlchemy 接受
-Engine 对象创建成功
-```
-
-并不能证明：
-
-```text
-PostgreSQL 正在运行
-密码正确
-端口正确
-数据库存在
-网络可达
-```
-
-必须真正执行：
-
-```python
-with engine.connect() as connection:
-    connection.execute(...)
-```
-
-才能验证完整链路。
-
----
-
-### 2.5 连接探针是什么？
-
-“探针”可以理解成：
-
-> **做一个非常简单的测试，看看数据库到底能不能访问。**
-
-最经典的是：
-
-```sql
-SELECT 1;
-```
-
-它几乎不涉及真实业务数据，只是在问 PostgreSQL：
-
-```text
-你能不能正常执行一条 SQL？
-```
-
-如果：
-
-```text
-FastAPI/Python
-   ↓
-SQLAlchemy
-   ↓
-psycopg
-   ↓
-PostgreSQL
-   ↓
-SELECT 1 成功
-```
-
-说明最基础的数据库链路已经打通。
-
-因此：
-
-```text
-create_engine() 成功
-```
-
-和：
-
-```text
-SELECT 1 成功
-```
-
-完全不是一回事。
-
-后者才真正证明数据库可达。
-
----
-
-## 3. Alembic：给数据库结构做“版本管理”
-
-### 3.1 Alembic 这个名字是什么？
-
-`Alembic` 原本指一种传统的蒸馏器具。
-
-它和：
-
-```text
-SQLAlchemy
-```
-
-名字里的“Alchemy（炼金术）”有一些风格上的呼应。
-
-不过学习时不用纠结名字本身。
-
-直接记：
-
-> **Alembic 是 SQLAlchemy 生态中专门管理数据库结构变化的迁移工具。**
-
----
-
-### 3.2 为什么数据库还需要“迁移”？
-
-假设 Day 1 你的数据库只有：
-
-```text
-documents
-
-id
-filename
-```
-
-后来你发现还需要：
-
-```text
-status
-created_at
-```
-
-最简单粗暴的方法当然可以直接进入 PostgreSQL 手动执行：
-
-```sql
-ALTER TABLE ...
-```
-
-但是随着项目越来越复杂，会出现问题：
-
-```text
-我到底什么时候加过这个字段？
-
-队友的数据库有没有这个字段？
-
-生产环境数据库现在是什么版本？
-
-这次修改能不能撤回？
-```
-
-因此需要把每一次数据库结构变化都保存成代码文件。
-
-例如：
-
-```text
-迁移 001
-启用 vector 扩展
-
-迁移 002
-创建 knowledge_bases 表
-
-迁移 003
-创建 documents 表
-
-迁移 004
-给 documents 增加 status 字段
-```
-
-这就是：
-
-```text
-Database Migration
-数据库迁移
-```
-
-Alembic 就是负责管理这些迁移历史的。
-
----
-
-### 3.3 Alembic 和 Git 有什么相似？
-
-可以做一个非常粗略的类比：
-
-```text
-Git
-管理代码版本
-
-Alembic
-管理数据库结构版本
-```
-
-例如 Git 可以：
-
-```text
-查看历史
-切换版本
-回退代码
-```
-
-Alembic 也可以：
-
-```text
-upgrade
-升级数据库结构
-
-downgrade
-回退数据库结构
-
-history
-查看迁移历史
-```
-
-不过它们不是同一个东西，只是帮助理解。
-
----
-
-## 4. pgvector：让 PostgreSQL 能保存和检索向量
-
-### 4.1 pgvector 这个名字怎么来的？
-
-名字非常直接：
-
-```text
-pg + vector
-```
-
-其中：
-
-```text
-pg
-≈ PostgreSQL
-
-vector
-= 向量
-```
-
-所以：
-
-> **pgvector = PostgreSQL 的向量能力。**
-
----
-
-### 4.2 为什么企业 RAG 项目需要 pgvector？
-
-RAG 中，我们会把 Chunk 转换成 Embedding：
-
-```text
-文本 Chunk
-    ↓
-Embedding 模型
-    ↓
-[0.12, -0.38, 0.91, ...]
-```
-
-这个结果就是一个向量。
-
-例如你的 Embedding 模型输出：
-
-```text
-512 维向量
-```
-
-那么数据库里以后可能需要：
-
-```text
-embedding vector(512)
-```
-
-普通 PostgreSQL 默认并不认识：
-
-```text
-vector(512)
-```
-
-这种字段类型。
-
-安装并启用 pgvector 后，PostgreSQL 才获得：
-
-```text
-vector 类型
-向量距离计算
-向量相似度搜索
-向量索引
-```
-
-等能力。
-
----
-
-### 4.3 Python 的 pgvector 包和 PostgreSQL 的 vector 扩展不是一回事
-
-这是非常容易混淆的一点。
-
-你的 Python 环境中安装：
-
-```text
-pgvector==0.5.0
-```
-
-主要解决的是：
-
-> **Python / SQLAlchemy 如何表示和操作 PostgreSQL 中的 vector 类型。**
-
-但是 PostgreSQL 服务器本身还必须执行：
-
-```sql
-CREATE EXTENSION vector;
-```
-
-才能真正支持：
-
-```text
-vector
-```
-
-这种数据库类型。
-
-因此这里实际上存在两层：
-
 ```text
-Python
-pgvector Python 包
-      ↓
-让 SQLAlchemy 理解 vector
-
-PostgreSQL
-vector 扩展
-      ↓
-让数据库真正支持 vector
+.env / 环境变量
+→ build_database_url() 只按变量名报告缺失配置
+→ 应用级 Engine 复用连接池
+→ SessionLocal 为后续请求创建独立 Session
+→ check_database_connection() 执行 SELECT 1，并把底层连接异常转换为无秘密的错误
+→ Alembic 在线迁移复用真实 Engine，离线配置只使用隐藏密码的 URL
+→ vector 扩展完成 upgrade → downgrade → upgrade，并留下真实数据库证据
 ```
-
-可以记成：
-
-> **Python 包负责“客户端会用”，PostgreSQL 扩展负责“数据库真的会”。**
-
-两边缺一边都不完整。
-
----
-
-## 5. 把今天所有概念串起来
 
-最终可以得到这样一条完整链路：
+### 今天在完整项目中的位置
 
-```text
-FastAPI
-业务接口
-   ↓
-
-SQLAlchemy
-负责 ORM、Engine、Session、事务等
-   ↓
-
-psycopg
-负责 Python 和 PostgreSQL 的底层通信
-   ↓
-
-PostgreSQL
-真正保存业务数据
-   ↓
-
-pgvector 扩展
-让 PostgreSQL 进一步拥有向量能力
-```
+- 所属阶段：数据基础。
+- 所属链路：支撑“文档入库”和“用户问答”两条链路的数据库基础设施。
+- 今天的输入：固定版本的 SQLAlchemy、psycopg、Alembic、pgvector 依赖，PostgreSQL Compose 服务，以及现有 vector 基线迁移。
+- 今天的输出：安全的数据库入口、可主动执行的连接探针、可回滚的 vector 扩展迁移基线和真实验收记录。
+- 下一天为什么需要它：Day 2 要复用 `Base`、Engine 和 Alembic 环境创建三张业务表；如果连接与迁移基线不可靠，后续模型和迁移都无法安全落地。
 
-而数据库结构的变化，例如：
+## 二、开始前的真实状态
 
-```text
-启用 vector 扩展
-创建 knowledge_bases 表
-创建 documents 表
-增加 embedding 字段
-```
+### 已经具备
 
-则交给：
+- `[当前事实]` `requirements.txt` 已固定 `SQLAlchemy==2.0.52`、`alembic==1.19.1`、`pgvector==0.5.0` 和 `psycopg[binary]==3.3.4`。
+- `[当前事实]` `docker-compose.yml` 使用 `pgvector/pgvector:pg16`，包含本地端口映射、命名 Volume 和 `pg_isready` 健康检查。
+- `[当前事实]` `.env.example` 已列出 PostgreSQL 的公开示例变量，真实 `.env` 已被 `.gitignore` 和 `.dockerignore` 排除。
+- `[当前事实]` `app/db.py` 已有应用级 Engine、`SessionLocal`、`Base`、3 秒连接超时和 `SELECT 1` 连接探针。
+- `[当前事实]` `migrations/env.py` 已把 `Base.metadata` 注册为 Alembic 的 `target_metadata`，在线迁移会使用应用 Engine。
+- `[当前事实]` `migrations/versions/751357b5d274_enable_vector_extension.py` 已定义 `CREATE EXTENSION IF NOT EXISTS vector` 和对应的 `DROP EXTENSION IF EXISTS vector`。
 
-```text
-Alembic
-```
+### 仍然缺少
 
-进行版本化管理。
+- `[当前事实]` `app/db.py` 的必需配置校验仍是 `[你来完成]` 占位注释；空的数据库名、用户名或密码不会在创建 Engine 前得到清晰提示。
+- `[当前事实]` 连接探针未将 SQLAlchemy/psycopg 底层异常转换为稳定、无秘密的应用错误。
+- `[当前事实]` `migrations/env.py` 在离线模式中显式使用 `hide_password=False`，不符合“不输出数据库密码”的边界。
+- `[当前事实]` 仓库没有连接探针、迁移往返和 vector 扩展查询的真实运行记录。
 
-所以整个关系可以画成：
+### 待实测
 
-```text
-                    Alembic
-                       │
-                       │ 管理数据库结构变化
-                       ↓
-
-FastAPI → SQLAlchemy → psycopg → PostgreSQL
-                                     │
-                                     ↓
-                                  pgvector
-                                  向量能力
-```
+- `[待实测]` Docker Desktop、Compose 和当前 Python 虚拟环境在本机是否可用。
+- `[待实测]` PostgreSQL 容器是否能通过健康检查，连接探针是否真实输出 `1`。
+- `[待实测]` 当前学习数据库处于 Alembic 的哪个 revision。
+- `[待实测]` vector 迁移能否成功升级、回滚并恢复到 `751357b5d274 (head)`。
+- `[待实测]` 配置缺失和数据库停止时，错误输出是否只包含安全提示而不包含密码或完整连接串。
 
----
+### 需要保护的用户修改
 
-## 6. 在当前项目中的具体职责
+- 当前工作区正在重构 17 天文档，存在已删除的旧版 Day 文件以及未提交的新总安排、生成器和 `docs/README.md`；不要恢复旧文件，不要把这些无关改动混入 Day 1 的暂存范围。
+- `app/db.py`、`migrations/env.py`、现有 vector 迁移和依赖文件当前未显示用户未提交修改；执行前仍要再次运行 `git status --short`。
+- 只按本日明确文件清单操作，不使用 `git add .`，不读取或打印真实 `.env` 内容。
 
-当前项目中不要把所有数据库代码一次性改掉。
+## 三、今天必须理解的核心知识
 
-现阶段可以理解为存在两条链路。
+### 1. SQLAlchemy 与 psycopg 的职责边界
 
-原来的聊天历史：
+- 一句话解释：SQLAlchemy 提供 Engine、连接池、Session 和 ORM 等高层数据库接口，psycopg 是真正与 PostgreSQL 进行网络通信的驱动。
+- 在当前项目中的职责：`create_engine()` 根据 `postgresql+psycopg` URL 选择 psycopg；SQLAlchemy 组织连接和 SQL，psycopg 把请求发送给 PostgreSQL。
+- 与其他组件的关系：应用代码调用 SQLAlchemy，SQLAlchemy 调用 psycopg，psycopg 连接 PostgreSQL；Alembic 又通过 SQLAlchemy Engine 执行迁移 SQL。
+- 容易混淆的点：安装 SQLAlchemy 不等于已经安装 PostgreSQL 驱动；psycopg 也不是数据库服务器。
+- 面试一句话：当前项目用 SQLAlchemy 管理连接池和 ORM 边界，用 psycopg 作为 PostgreSQL 3.x 驱动，二者分别解决抽象层和通信层问题。
 
-```text
-/chat
-/history
-   ↓
-app/database.py
-   ↓
-SQLite
-```
+### 2. Engine、Connection 与 Session 的生命周期
 
-目前继续保留，不动它。
+- 一句话解释：Engine 是应用级数据库入口，Connection 是从连接池借出的一条连接，Session 是一次业务工作单元的 ORM 操作上下文。
+- 在当前项目中的职责：`engine` 在模块加载时创建一次；探针用 `engine.connect()` 临时借出连接；后续 API/Service 会用 `SessionLocal()` 为每个业务操作创建独立 Session。
+- 与其他组件的关系：Session 绑定 Engine，Engine 管理连接池，真实网络连接由 psycopg 建立。
+- 容易混淆的点：创建 Engine 通常是惰性的，不会立即连接数据库；多个请求也不能共享一个长期 Session。
+- 面试一句话：我让 Engine 随应用复用，让 Session 随请求或业务工作单元创建和关闭，并用主动 `SELECT 1` 区分“Engine 已构造”和“数据库真实可用”。
 
-新的企业 RAG 数据链路：
+### 3. Alembic migration 与 `Base.metadata.create_all()`
 
-```text
-知识库
-文档
-Chunk
-向量
-权限
-   ↓
-app/db.py
-   ↓
-SQLAlchemy
-   ↓
-psycopg
-   ↓
-PostgreSQL + pgvector
-```
+- 一句话解释：`create_all()` 只能按当前 metadata 补建缺失表，Alembic migration 则保存有顺序、可审查、可回滚的结构变更历史。
+- 在当前项目中的职责：Day 1 的首个 revision 管理 PostgreSQL `vector` 扩展，Day 2 以后所有表和字段变化都要沿 revision 链演进。
+- 与其他组件的关系：Alembic 读取 `Base.metadata` 支持后续自动比较，但 Day 1 的扩展属于显式 SQL 迁移。
+- 容易混淆的点：生成 revision 不等于执行 upgrade；执行 upgrade 成功也不代表 downgrade 一定安全。
+- 面试一句话：企业项目需要可审查的数据库版本历史，所以我用 Alembic 管理 upgrade/downgrade，而不是在应用启动时依赖 `create_all()` 静默改结构。
 
-这样做的目的不是因为一个项目必须同时使用 SQLite 和 PostgreSQL，而是为了：
+### 4. PostgreSQL vector 扩展与 Python pgvector 包
 
-> **逐步改造项目，避免在学习 PostgreSQL 的同时顺手破坏原本已经可以工作的聊天接口。**
+- 一句话解释：数据库里的 `vector` 扩展让 PostgreSQL 理解向量类型和距离运算，Python 的 `pgvector` 包负责把 Python/SQLAlchemy 值映射为数据库 vector 类型。
+- 在当前项目中的职责：Day 1 只启用数据库扩展；真正的 `vector(512)` ORM 字段属于 Day 2。
+- 与其他组件的关系：PostgreSQL 扩展提供存储和计算能力，pgvector Python 包与 SQLAlchemy 对接，Embedding 服务在后续提供 512 维数据。
+- 容易混淆的点：只安装 `pgvector==0.5.0` 不会自动在数据库中执行 `CREATE EXTENSION vector`。
+- 面试一句话：我把数据库扩展启用放进 Alembic 基线，确保环境可复现；Python 包只负责类型适配，不能代替数据库扩展。
 
-等新的数据库链路稳定后，再考虑后续是否需要进一步统一。
+## 四、升级涉及的文件
 
----
+| 文件                      | 操作     | 作用                                       |
+| ----------------------- | ------ | ---------------------------------------- |
+| `app/db.py`             | 修改     | 补齐必需配置校验、稳定的 Engine/Session 工厂和无秘密连接探针错误 |
+| `migrations/env.py`     | 修改     | 在线迁移复用真实 Engine，离线迁移只使用隐藏密码的 URL         |
+| `docs/17天每日学习/Day01.md` | 更新执行记录 | 保存实际命令、正常/失败结果和最终 commit，不记录真实秘密         |
 
-## 7. 今天最需要记住的 6 句话
+以下文件只复核、不修改，因此不进入最后的 `git add`：
 
-1. **PostgreSQL 是真正保存数据的数据库。**
-    
-2. **psycopg 是 Python 连接 PostgreSQL 的底层驱动。**
-    
-3. **SQLAlchemy 是 Python 操作数据库的高级工具，ORM 是它提供的重要能力之一。**
-    
-4. **Engine 是数据库访问的长期入口，Session 是一次业务操作使用的工作单元。**
-    
-5. **Alembic 管理数据库结构的版本变化，可以升级，也可以回滚。**
-    
-6. **pgvector 让 PostgreSQL 获得存储和检索向量的能力，Python 的 pgvector 包和数据库里的 vector 扩展不是同一个东西。**
-    
+- `requirements.txt`：固定版本已经满足 Day 1。
+- `docker-compose.yml`：PostgreSQL、Volume 和健康检查已经存在。
+- `.env.example`：公开示例变量已经齐全；真实 `.env` 只在本地使用且禁止提交。
+- `migrations/versions/751357b5d274_enable_vector_extension.py`：upgrade/downgrade 已成对定义，今天只做真实往返验证。
 
-最后可以用这一张图复习：
+### 今日不做
 
-```text
-FastAPI
-   ↓
-SQLAlchemy
-   │
-   ├── Engine
-   ├── Session
-   └── ORM
-   ↓
-psycopg
-   ↓
-PostgreSQL
-   ↓
-pgvector
-
-Alembic
-   ↓
-负责管理 PostgreSQL 的结构变化
-```
+- 不创建 `KnowledgeBase`、`Document`、`Chunk` ORM 模型或业务表；这属于 Day 2。
+- 不编写 Repository；这属于 Day 3。
+- 不修改 PDF 入库、FAISS 检索或 RAG API。
+- 不创建 `vector(512)` 字段，不提前建立 HNSW/IVFFlat 索引。
+- 不删除数据库 Volume，不在包含业务数据的数据库上验证 downgrade。
 
-这个版本我特意把 **“名字 → 是什么 → 为什么需要 → 在你项目里干什么”** 串成了一条线，后面你再看到 `Engine`、`Session`、`Alembic`、`vector` 时会更容易定位它们分别处在哪一层。
+## 五、按顺序完成项目升级
 
-## 三、逐步完成今天的升级
+### 步骤 1：确认本地配置入口，不输出秘密（建议 5 分钟）
 
-### 步骤 1：安装并声明四个直接依赖（建议 8 分钟）
+**目标**
 
-**为什么先做这一步**
+确认 `.env` 只作为本地配置存在；如果它尚不存在，仅从公开示例复制一次，绝不覆盖现有 `.env`。
 
-后面的连接代码和迁移命令都依赖这些包；先固定实际版本，才能区分“代码错误”和“依赖根本不存在”。
+**修改位置**
 
-**[你来完成]**
+- 文件：`.env`（本地文件、已被 Git 忽略）
+- 定位：项目根目录
+- 操作：仅在不存在时从 `.env.example` 创建，然后由你填写自己的本地学习数据库密码；不要把真实值粘贴到本计划或终端输出中。
 
-1. 在项目根目录确认当前解释器和已有声明：
+**在项目根目录执行**
 
 ```powershell
-python --version
-python -c "import sys; print(sys.executable)"
-Get-Content -LiteralPath requirements.txt
+if (-not (Test-Path -LiteralPath ".env")) {
+    Copy-Item -LiteralPath ".env.example" -Destination ".env"
+    Write-Host "已从公开示例创建 .env；请填写你自己的本地配置。"
+} else {
+    Write-Host ".env 已存在，本步骤不会覆盖。"
+}
+
+git check-ignore .env
 ```
 
-2. 在你为本项目使用的 Python 环境中安装直接依赖：
+预期 `git check-ignore .env` 输出 `.env`。打开 `.env` 时只在本机确认以下变量都有值，不要使用会把整份文件打印到终端的命令：
 
-```powershell
-python -m pip install SQLAlchemy alembic pgvector "psycopg[binary]"
-python -m pip show SQLAlchemy alembic pgvector psycopg psycopg-binary
-python -c "import sqlalchemy, alembic, psycopg; from pgvector.sqlalchemy import Vector; print('database imports ok')"
-```
-
-3. 根据 `pip show` 的真实结果，在 `requirements.txt` 中只新增四条直接依赖并使用精确版本；不要用 `pip freeze > requirements.txt` 覆盖整份文件：
-
-```text
-SQLAlchemy==<实际版本>
-alembic==<实际版本>
-pgvector==<实际版本>
-psycopg[binary]==<psycopg 的实际版本>
-```
-
-**[AI 辅助]**
-
-如果 `psycopg` 与 `psycopg-binary` 的显示方式让你不确定，把 `pip show` 输出贴给 AI，让 AI 只判断应该如何声明直接依赖，不要让 AI 重写整个 `requirements.txt`。
-
-**预期结果**
-
-- 四类 import 均成功，并输出 `database imports ok`。
-- `requirements.txt` 新增精确版本，但原有依赖没有被批量升级或重排。
-
-**理解检查**
-
-> 请用自己的话解释：为什么项目同时需要 SQLAlchemy 和 psycopg，而不是二选一？
-
-### 步骤 2：建立独立的 PostgreSQL 连接层（建议 15 分钟）
-
-**为什么现在做这一步**
-
-先形成唯一、可复用的数据库入口，后续模型、迁移和数据访问层才能共享连接配置；同时隔离已有 SQLite 逻辑，控制今天的改动边界。
-
-**[你来完成]**
-
-1. 打开并对照：`app/config.py`、`app/database.py`、`.env.example`。不要执行 `Get-Content .env`，也不要把真实密码粘贴到终端输出或聊天中。
-2. 在 `.env.example` 增加非秘密的主机示例，并在你本地 `.env` 中私下补同名变量：
-
-```dotenv
+```env
+POSTGRES_DB=enterprise_rag
+POSTGRES_USER=rag_app
+POSTGRES_PASSWORD=填写你自己的本地学习数据库密码
+POSTGRES_PORT=5432
 POSTGRES_HOST=127.0.0.1
 ```
 
-3. 在 `app/config.py` 中增加 PostgreSQL 配置读取，保持现有 LLM 配置不变：
+**这一步怎样工作**
 
-```python
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "127.0.0.1")
-POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
-POSTGRES_DB = os.getenv("POSTGRES_DB", "")
-POSTGRES_USER = os.getenv("POSTGRES_USER", "")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "")
-```
+- 输入：公开的 `.env.example` 和你自己的本地配置。
+- 输出：只存在于本机、不会被 Git 暂存的 `.env`。
+- 调用谁：`app/config.py` 的 `load_dotenv()` 和 Docker Compose 都会从项目根目录读取这些变量。
+- 被谁调用：`app/db.py` 构造 URL，`docker-compose.yml` 初始化 PostgreSQL。
+- 正常路径：变量齐全，Python 和 Compose 使用一致的数据库名、用户、密码、主机和端口。
+- 失败路径：变量缺失时，下一步新增的校验只报告变量名，不回显值。
 
-4. 新建 `app/db.py`，按下面的职责组织最小结构；使用 `URL.create(...)`，不要手工拼接带密码的 URL，也不要打印 Engine URL：
+**完成本步骤后的预期状态**
+
+`.env` 存在且仍被 Git 忽略，真实密码没有出现在命令历史、学习文档或 Git diff 中。
+
+### 步骤 2：补齐安全数据库入口（建议 15 分钟）
+
+**目标**
+
+保留已有 Engine、Base、SessionLocal 和探针，补齐必需配置校验，并将底层连接异常转换为不含 DSN 和密码的稳定错误。
+
+**修改位置**
+
+- 文件：`app/db.py`
+- 定位：整份文件较短，搜索 `def build_database_url() -> URL:`
+- 操作：先核对没有自己额外加入的内容，再用下面代码替换整份文件。
+
+**复制下面的完整代码**
 
 ```python
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.config import (
@@ -1124,7 +210,21 @@ from app.config import (
 
 
 def build_database_url() -> URL:
-    # [你来完成] 检查 DB、USER、PASSWORD 是否为空；缺失时只报告变量名。
+    required_settings = {
+        "POSTGRES_DB": POSTGRES_DB,
+        "POSTGRES_USER": POSTGRES_USER,
+        "POSTGRES_PASSWORD": POSTGRES_PASSWORD,
+    }
+    missing_settings = [
+        name
+        for name, value in required_settings.items()
+        if not value.strip()
+    ]
+    if missing_settings:
+        raise RuntimeError(
+            "缺少必需的数据库配置: " + ", ".join(missing_settings)
+        )
+
     return URL.create(
         drivername="postgresql+psycopg",
         username=POSTGRES_USER,
@@ -1144,6 +244,8 @@ engine = create_engine(
     pool_pre_ping=True,
     connect_args={"connect_timeout": 3},
 )
+
+
 SessionLocal = sessionmaker(
     bind=engine,
     autoflush=False,
@@ -1152,42 +254,73 @@ SessionLocal = sessionmaker(
 
 
 def check_database_connection() -> int:
-    with engine.connect() as connection:
-        return connection.execute(text("SELECT 1")).scalar_one()
+    try:
+        with engine.connect() as connection:
+            return connection.execute(text("SELECT 1")).scalar_one()
+    except SQLAlchemyError:
+        raise RuntimeError(
+            "数据库连接失败，请检查 PostgreSQL 服务状态和 POSTGRES_* 配置。"
+        ) from None
 ```
 
-5. 不要修改 `app/main.py` 的启动流程，也不要删除或改名 `app/database.py`。
+**这段代码怎样工作**
 
-**预期结果**
+- 输入：`app.config` 中的五项 PostgreSQL 配置。
+- 输出：一个 `postgresql+psycopg` URL、应用级 Engine、Session 工厂，以及返回整数的连接探针。
+- 调用谁：Engine 通过 SQLAlchemy 调用 psycopg；探针向 PostgreSQL 执行 `SELECT 1`。
+- 被谁调用：Alembic 复用 `Base` 和 `engine`；Day 2 模型会继承 `Base`；后续 Repository 会通过 `SessionLocal()` 创建 Session。
+- 正常路径：Engine 惰性创建，调用探针时借出 Connection，执行查询得到 `1`，退出 `with` 后归还连接。
+- 失败路径：缺少必需变量时，在构造 Engine 前只列出缺失变量名；连接失败时抑制底层异常链，只返回固定安全信息。
+- 事务边界：本日探针只有只读查询，不创建 Session、不需要 commit/rollback；后续业务事务不能交给这个探针管理。
 
-- `app/db.py` 成为 PostgreSQL 的唯一基础设施入口。
-- 模块不记录、不打印真实密码；错误只说明缺失的变量名。
-- SQLite 与 PostgreSQL 的职责在文件层面清楚分开。
+**完成本步骤后的预期状态**
 
-**理解检查**
+`app.db` 可以在配置齐全时导入，配置缺失和数据库不可用时均快速、安全地失败，且没有创建全局长期 Session。
 
-> 请画出并口述：`.env → app/config.py → URL.create → SQLAlchemy Engine → psycopg → PostgreSQL`，其中每一段负责什么？
+### 步骤 3：让 Alembic 离线配置隐藏密码（建议 10 分钟）
 
-### 步骤 3：初始化 Alembic 并创建 pgvector 基线迁移（建议 17 分钟）
+**目标**
 
-**为什么现在做这一步**
+继续让在线迁移使用真实应用 Engine，但离线迁移只把隐藏密码后的 URL 交给 Alembic。
 
-连接层可复用以后，迁移工具才能与应用使用同一数据库；第一条迁移只管理扩展，不提前侵入 Day 2 的表模型。
+**修改位置**
 
-**[你来完成]**
+- 文件：`migrations/env.py`
+- 定位：搜索 `def run_migrations_offline() -> None:`
+- 操作：先核对没有自己额外加入的模型 import，再用下面代码替换整份文件。
 
-1. 从项目根目录初始化新的 `migrations/` 目录；不要尝试复用只有缓存文件的 `alembic/`，也不要批量删除它：
-
-```powershell
-python -m alembic init migrations
-```
-
-2. 编辑 `migrations/env.py`：导入 `Base` 和 `engine`，把 `target_metadata` 指向 `Base.metadata`，在线迁移直接复用 Engine。关键形状如下：
+**复制下面的完整代码**
 
 ```python
+from logging.config import fileConfig
+
+from alembic import context
+
 from app.db import Base, engine
 
+
+config = context.config
+
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+
 target_metadata = Base.metadata
+
+
+def run_migrations_offline() -> None:
+    safe_url = engine.url.render_as_string(hide_password=True)
+
+    context.configure(
+        url=safe_url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+        compare_type=True,
+    )
+
+    with context.begin_transaction():
+        context.run_migrations()
 
 
 def run_migrations_online() -> None:
@@ -1197,240 +330,470 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             compare_type=True,
         )
+
         with context.begin_transaction():
             context.run_migrations()
+
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online()
 ```
 
-3. 离线迁移分支也应从 `engine.url.render_as_string(hide_password=False)` 取得 URL，但不要 `print`；`alembic.ini` 中不要写真实账号和密码。
-4. 创建第一条迁移：
+**这段代码怎样工作**
+
+- 输入：`app.db` 中的应用 Engine 和 `Base.metadata`。
+- 输出：在线、离线两种 Alembic 执行上下文。
+- 调用谁：在线模式从 Engine 获取真实 Connection；离线模式只根据脱敏 URL 方言生成 SQL。
+- 被谁调用：`python -m alembic upgrade`、`downgrade` 和带 `--sql` 的离线命令。
+- 正常路径：在线迁移连接真实数据库并在事务上下文中运行 revision。
+- 失败路径：必需配置缺失时由 `build_database_url()` 安全失败；离线 URL 中密码固定显示为 `***`。
+- 事务边界：Alembic 的 `context.begin_transaction()` 管理迁移事务；应用 Session 不参与迁移。
+
+**完成本步骤后的预期状态**
+
+代码中不再出现 `hide_password=False`，Alembic 在线连接仍使用真实 Engine，离线模式不会把真实密码拼进 URL 输出。
+
+### 步骤 4：复核现有 vector 基线迁移（建议 5 分钟）
+
+**目标**
+
+确认当前只有一个基线 revision，upgrade 与 downgrade 成对存在；今天不生成新 revision。
+
+**在项目根目录执行**
 
 ```powershell
-python -m alembic revision -m "enable vector extension"
-```
-
-5. 打开新生成的 `migrations/versions/<revision>_enable_vector_extension.py`，只实现这一项结构变化：
-
-```python
-from alembic import op
-
-
-def upgrade() -> None:
-    op.execute("CREATE EXTENSION IF NOT EXISTS vector")
-
-
-def downgrade() -> None:
-    op.execute("DROP EXTENSION IF EXISTS vector")
-```
-
-#### 有一个非常重要的点：`revision` 不等于执行迁移
-
-你执行：
-
-```
-python -m alembic revision -m "enable vector extension"
-```
-
-只是：
-
-> **生成迁移文件。**
-
-还没有真的修改 PostgreSQL。
-
-真正以后执行类似：
-
-```
-python -m alembic upgrade head
-```
-
-才相当于告诉 Alembic：
-
-> 把数据库升级到最新版本。
-
-这时候才会真正执行：
-
-```
-CREATE EXTENSION IF NOT EXISTS vector;
-```
-
-所以流程是：
-
-```
-revision
-↓
-创建“修改方案”
-
-upgrade
-↓
-真正执行“修改方案”
-```
-
-这一点非常重要。
-
-
-**预期结果**
-
-- 根目录出现 `alembic.ini`，并生成可读的 `migrations/env.py` 和一条版本脚本。
-- 迁移脚本不包含业务表、不包含密码，`upgrade` 与 `downgrade` 一一对应。
-
-**理解检查**
-
-> 为什么今天只迁移 `vector` 扩展，而不顺便创建三张业务表？
-
-今天想验证的是：
-
-```
-SQLAlchemy 能不能连接 PostgreSQL
-↓
-Alembic 能不能使用同一个 Engine
-↓
-Alembic 能不能执行一次 upgrade
-↓
-Alembic 能不能执行一次 downgrade
-```
-
-而不是：
-
-> 今天把整个数据库业务模型全部做完。
-
-### 步骤 4：验证正常连接与升级路径（建议 8 分钟）
-
-**为什么要真实运行**
-
-容器 `healthy` 只说明 PostgreSQL 自检成功，不能证明 Python 驱动、应用配置和 Alembic 链路都正确。
-
-**[你来完成]**
-
-```powershell
-docker compose ps
-python -c "from app.db import check_database_connection; print(check_database_connection())"
-python -m alembic upgrade head
-python -m alembic current
-docker compose exec -T postgres psql -U rag_app -d enterprise_rag -c "SELECT extname FROM pg_extension WHERE extname = 'vector';"
+rg -n "revision|down_revision|CREATE EXTENSION|DROP EXTENSION" migrations/versions/751357b5d274_enable_vector_extension.py
+python -m alembic history
 ```
 
 **预期结果**
 
-- `docker compose ps` 显示 PostgreSQL 为 `healthy`。
-- 连接探针输出 `1`。
-- `alembic current` 显示刚创建的 revision，并带有 `(head)`。
-- `\dx vector` 能看到 `vector` 扩展；以上都属于预期，必须用你的真实输出确认后再记为通过。
+- revision 是 `751357b5d274`，`down_revision` 是 `None`。
+- upgrade 包含 `CREATE EXTENSION IF NOT EXISTS vector`。
+- downgrade 包含 `DROP EXTENSION IF EXISTS vector`。
+- `alembic history` 显示该 revision 为当前链路的 `<base> -> 751357b5d274 (head)`。
 
-**理解检查**
+**这一步怎样工作**
 
-> 如果 Engine 创建成功但 `SELECT 1` 失败，能够排除什么，又还不能排除什么？
+- 输入：已有迁移脚本和 Alembic revision 目录。
+- 输出：对迁移链和双向操作的静态核对结果。
+- 正常路径：只有一个 head，升级和回滚方向清楚。
+- 失败路径：如果出现多个 head 或 revision 文件缺失，先按第九节排错，不执行 downgrade。
 
-### 步骤 5：验证回滚和数据库不可用路径（建议 8 分钟）
+**完成本步骤后的预期状态**
 
-**为什么不能只测成功路径**
+确认今天不需要生成第二个迁移，后续只对现有基线做真实往返验收。
 
-Day 1 的核心承诺包括“可回滚”，同时应用面对错误端口时应明确失败而不是假装连接成功或泄露密码。
+## 六、运行数据库迁移或环境命令
 
-**[你来完成]**
+> 今天涉及数据库结构变更：vector 扩展会在专用学习数据库中被创建、删除并恢复。downgrade 会改变数据库能力，只能对确认没有业务数据和 vector 业务列的 Day 1 学习数据库执行；不要删除 Volume，也不要在共享、生产或已有业务数据的数据库执行。
 
-1. 先回滚到基线之前，检查扩展消失，再恢复到 head：
+### 1. 检查当前状态
 
-```powershell
-python -m alembic downgrade base
-python -m alembic current
-docker compose exec -T postgres psql -U rag_app -d enterprise_rag -c "SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';"
-python -m alembic upgrade head
-python -m alembic current
-docker compose exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "\\dx vector"'
-```
-
-2. 在一个独立 Python 进程里覆盖为错误端口，不修改 `.env`，确认探针失败：
+执行目录：项目根目录。目的：确认工具版本、用户修改边界和 Compose 服务定义。按顺序执行；这里只读取状态，不启动服务。
 
 ```powershell
-python -c "import os; os.environ['POSTGRES_PORT']='1'; from app.db import check_database_connection; check_database_connection()"
-```
-
-3. 最后再次运行正常探针，证明失败实验没有污染配置：
-
-```powershell
-python -c "from app.db import check_database_connection; print(check_database_connection())"
-```
-
-**预期结果**
-
-- `downgrade base` 后 `vector` 不再列出；再次 `upgrade head` 后恢复。
-- 错误端口命令在约 3 秒内以连接异常失败，不出现真实密码，也不能被吞掉后输出成功。
-- 最后的正常探针重新输出 `1`。
-- 如果 Day 2 以后已有依赖 `vector` 的列，不要再执行这条 `downgrade base`，更不要用 `CASCADE` 绕过依赖。
-
-**理解检查**
-
-> 正常探针、迁移 current、扩展查询三项证据分别证明了什么，为什么缺一项都不完整？
-
-### 步骤 6：记录结果并准备提交（建议 4 分钟）
-
-- 在本文件“实际完成”上方补充你真实执行的命令与结果摘要；失败就记录失败，不把“预期结果”写成“已经通过”。
-- 检查今天的差异和全局状态：
-
-```powershell
-git diff -- requirements.txt .env.example app/config.py app/db.py alembic.ini migrations docs/17天每日学习/Day01.md
 git status --short
+python --version
+python -m pip show SQLAlchemy alembic pgvector psycopg
+docker --version
+docker compose version
+docker compose config --services
 ```
 
-- 确认 `.env`、密码、缓存文件和既有文档改动没有进入差异。
-- 验收全部通过后，只暂存今天的文件：
+预期结果：依赖版本与 `requirements.txt` 一致，Compose 服务列表包含 `postgres`。如果 `pip show` 缺包，先激活本项目虚拟环境；只有确实未安装时才执行：
 
 ```powershell
-git add requirements.txt .env.example app/config.py app/db.py alembic.ini migrations docs/17天每日学习/Day01.md
-git diff --cached
+python -m pip install -r requirements.txt
 ```
 
-- 建议 commit message：`feat(db): bootstrap PostgreSQL migrations`
-- 本计划不替你执行 `git commit`；请在检查暂存差异后自行提交。
+安装依赖属于用户实际执行阶段；本计划生成时没有执行该命令。
 
-## 四、面试高频问题
+### 2. 启动数据库并验证配置脱敏
 
-### 问题 1：为什么选择 SQLAlchemy + psycopg，而不是直接写 psycopg SQL？
+执行目录：项目根目录。目的：启动 PostgreSQL 并等待健康检查，然后确认 URL 的显示形式隐藏密码。
 
-- 考察点：抽象层职责、事务管理和工程可维护性。
-- 回答要点：psycopg 是 PostgreSQL 驱动；SQLAlchemy 提供 Engine、连接池、Session、类型映射及与 Alembic 的元数据协作；复杂向量查询仍可在 SQLAlchemy 中使用明确 SQL 表达式，而不是完全放弃数据库能力。
-- 结合本项目：指出 `app/db.py` 统一连接基础设施，Day 3 的数据访问层会使用 Session，Day 5 再表达 pgvector Top-K 查询。
+```powershell
+docker compose up -d --wait postgres
+docker compose ps postgres
+python -c "from app.db import engine; print(engine.url.render_as_string(hide_password=True))"
+```
 
-### 问题 2：为什么创建 Engine 不能证明数据库已经连接？
-
-- 考察点：惰性连接和连接池行为。
-- 回答要点：`create_engine` 主要建立配置对象，通常到第一次 `connect()` 或执行 SQL 时才向数据库发起真实连接；因此需要 `SELECT 1` 探针。
-- 结合本项目：说明今天的 `check_database_connection()` 如何从 Engine 经 psycopg 到 PostgreSQL，并返回标量 `1`。
-
-### 问题 3：pgvector Python 包和 PostgreSQL 的 vector 扩展有什么区别？
-
-- 考察点：客户端类型适配与服务器端能力的边界。
-- 回答要点：Python 包让 SQLAlchemy 理解向量类型和操作；数据库扩展提供 `vector` 列类型、距离运算符和相关索引能力；只安装任一侧都不能形成完整链路。
-- 结合本项目：今天安装 Python 包并通过 Alembic 启用扩展，Day 2 才真正建立 `vector(512)` 列。
-
-### 问题 4：为什么数据库结构要使用 Alembic，而不是应用启动时执行 `CREATE TABLE IF NOT EXISTS`？
-
-- 考察点：结构版本、可审计变更和回滚能力。
-- 回答要点：启动时建表难以记录变更顺序、评审差异和可靠回滚；Alembic 为每次结构变化提供 revision、依赖关系以及 upgrade/downgrade。
-- 结合本项目：第一条 revision 只管理 `vector` 扩展，并用 `upgrade → downgrade → upgrade` 留下真实证据。
-
-## 五、今天结束后应当留下的证据
-
-- 代码或配置：`requirements.txt`、`.env.example`、`app/config.py`、`app/db.py`、`alembic.ini`、`migrations/env.py`、`migrations/versions/<revision>_enable_vector_extension.py`。
-- 运行证据：依赖版本、连接探针输出 `1`、Alembic 当前 revision、回滚前后 `\dx vector` 的差异、错误端口连接失败摘要。
-- 学习记录：能口述 SQLite 与 PostgreSQL 两条链路，以及 `.env` 到数据库的完整连接数据流。
-- Git：只包含 Day 1 产物的暂存差异；不包含 `.env`、缓存或原有无关文档改动。
-
-# Day 1 完成标准
+预期结果：`postgres` 为 `running`/`healthy`；URL 结构类似下面内容，密码位置必须是 `***`，主机、端口、数据库名是动态配置值：
 
 ```text
-[ ] 能解释 SQLAlchemy、psycopg、PostgreSQL 三者为什么缺一不可
-[ ] 能解释 pgvector Python 包与数据库 vector 扩展的职责区别
-[ ] requirements.txt 已按实际安装结果声明四个直接依赖的精确版本
-[ ] app/db.py 已提供不泄露密码的 URL 构造、Engine、SessionLocal、Base 和连接探针
-[ ] 能从 .env、配置模块、Engine、驱动讲到 PostgreSQL 的完整连接数据流
-[ ] 正常连接探针真实输出 1，upgrade head 后能查询到 vector 扩展
-[ ] downgrade base 后扩展消失，再次 upgrade head 后恢复且 current 位于 head
-[ ] 错误端口验证在限定时间内明确失败，错误信息未泄露真实密码，随后正常连接恢复
-[ ] git diff 中没有 .env、秘密、缓存或既有无关修改，验收后完成边界清晰的 Git commit
+postgresql+psycopg://rag_app:***@127.0.0.1:5432/enterprise_rag
 ```
 
-实际完成：已完成
+### 3. 检查初始 revision 并升级到 head
 
-遇到的卡点：暂无
+执行目录：项目根目录。目的：先记录数据库当前版本，再应用 vector 基线迁移并查询真实数据库。
 
-Git commit：已提交
+```powershell
+python -m alembic current
+python -m alembic upgrade head
+python -m alembic current
+
+$dbUser = (docker compose exec -T postgres printenv POSTGRES_USER).Trim()
+$dbName = (docker compose exec -T postgres printenv POSTGRES_DB).Trim()
+docker compose exec -T postgres psql -U $dbUser -d $dbName -c "SELECT version_num FROM alembic_version;"
+docker compose exec -T postgres psql -U $dbUser -d $dbName -c "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS vector_enabled;"
+```
+
+预期结果：
+
+- `alembic upgrade head` 退出码为 `0`。
+- `alembic current` 显示 `751357b5d274 (head)`。
+- `alembic_version.version_num` 是 `751357b5d274`。
+- `vector_enabled` 是 `t`。
+
+`revision` 文件存在或 `revision --autogenerate` 成功都不等于数据库已升级；上面的版本表和扩展查询才是数据库证据。
+
+### 4. 回滚到 base
+
+执行目录：项目根目录。目的：先确认数据库没有任何 vector 业务列，再回滚唯一基线 revision。只在 Day 1 专用学习数据库执行。
+
+```powershell
+$dbUser = (docker compose exec -T postgres printenv POSTGRES_USER).Trim()
+$dbName = (docker compose exec -T postgres printenv POSTGRES_DB).Trim()
+$vectorColumnCount = (docker compose exec -T postgres psql -U $dbUser -d $dbName -tAc "SELECT COUNT(*) FROM information_schema.columns WHERE udt_name = 'vector';").Trim()
+
+if ($vectorColumnCount -ne "0") {
+    throw "检测到 vector 业务列；停止 Day 1 downgrade，请改用没有业务数据的专用学习数据库。"
+}
+
+python -m alembic downgrade base
+if ($LASTEXITCODE -ne 0) {
+    throw "Alembic downgrade 失败，先排错，不要继续执行恢复命令。"
+}
+
+python -m alembic current
+docker compose exec -T postgres psql -U $dbUser -d $dbName -c "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS vector_enabled;"
+```
+
+预期结果：downgrade 退出码为 `0`；当前 revision 回到 base（`alembic current` 不再显示 head）；`vector_enabled` 是 `f`。
+
+### 5. 再次升级并恢复最终状态
+
+执行目录：项目根目录。目的：证明迁移可重复应用，并把数据库恢复到后续 Day 所需的 head。
+
+```powershell
+python -m alembic upgrade head
+if ($LASTEXITCODE -ne 0) {
+    throw "恢复到 head 失败，Day 1 尚未完成。"
+}
+
+python -m alembic current
+
+$dbUser = (docker compose exec -T postgres printenv POSTGRES_USER).Trim()
+$dbName = (docker compose exec -T postgres printenv POSTGRES_DB).Trim()
+docker compose exec -T postgres psql -U $dbUser -d $dbName -c "SELECT version_num FROM alembic_version;"
+docker compose exec -T postgres psql -U $dbUser -d $dbName -c "SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';"
+```
+
+### 预期结果
+
+- 最终 revision 是 `751357b5d274 (head)`。
+- `alembic_version` 中保存 `751357b5d274`。
+- `pg_extension` 中有且只有名为 `vector` 的目标记录；实际 `extversion` 由镜像内扩展版本决定，是动态值。
+- 全程没有删除容器、Volume 或数据库数据目录。
+
+## 七、验证正常路径
+
+### 启动或准备服务
+
+执行目录：项目根目录。目的：确保数据库健康且迁移最终处于 head。
+
+```powershell
+docker compose up -d --wait postgres
+python -m alembic current
+```
+
+### 执行正常请求或测试
+
+今天没有新增 HTTP API；正常路径通过应用连接探针和数据库真实查询验证。
+
+```powershell
+python -c "from app.db import check_database_connection; print(check_database_connection())"
+
+$dbUser = (docker compose exec -T postgres printenv POSTGRES_USER).Trim()
+$dbName = (docker compose exec -T postgres printenv POSTGRES_DB).Trim()
+docker compose exec -T postgres psql -U $dbUser -d $dbName -c "SELECT current_database() AS database_name, current_user AS database_user;"
+docker compose exec -T postgres psql -U $dbUser -d $dbName -c "SELECT version_num FROM alembic_version;"
+docker compose exec -T postgres psql -U $dbUser -d $dbName -c "SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';"
+```
+
+### 预期状态码或输出结构
+
+```text
+连接探针进程退出码：0
+连接探针标准输出：1
+Alembic revision：751357b5d274
+vector 扩展：存在
+数据库名、用户、vector 版本：按本机配置动态生成，但不得包含密码
+```
+
+### 为什么它能证明今天已经完成
+
+- `SELECT 1` 证明 Engine 不只是成功构造，而是 SQLAlchemy 已通过 psycopg 与 PostgreSQL 完成真实往返。
+- `alembic_version` 证明迁移已经应用到数据库，而不是只存在于代码目录。
+- `pg_extension` 证明 PostgreSQL 服务器真实启用了 vector 扩展。
+- 第六节已经验证 downgrade 后扩展消失、再次 upgrade 后恢复，因此迁移基线具备双向性。
+
+执行后把真实摘要填写到第十五节，不要提前写成“已通过”。
+
+## 八、验证失败和边界路径
+
+### 场景 1：必需配置为空时只报告变量名
+
+下面命令只在当前 PowerShell 进程中临时把密码设为空白字符串，子进程结束后会恢复原来的进程变量；不会修改 `.env`，也不会打印原密码。
+
+```powershell
+$previousPassword = [Environment]::GetEnvironmentVariable("POSTGRES_PASSWORD", "Process")
+
+try {
+    [Environment]::SetEnvironmentVariable("POSTGRES_PASSWORD", "   ", "Process")
+    python -c "from app.db import build_database_url; build_database_url()"
+    $missingConfigExitCode = $LASTEXITCODE
+} finally {
+    [Environment]::SetEnvironmentVariable("POSTGRES_PASSWORD", $previousPassword, "Process")
+}
+
+if ($missingConfigExitCode -eq 0) {
+    throw "失败路径未触发：空白 POSTGRES_PASSWORD 不应通过校验。"
+}
+
+Write-Host "缺配置失败路径已触发，进程退出码：$missingConfigExitCode"
+```
+
+### 预期结果
+
+- 进程退出码：非 `0`。
+- 异常类型：`RuntimeError`。
+- 稳定信息：`缺少必需的数据库配置: POSTGRES_PASSWORD`。
+- 数据库应该保留：原有 revision、扩展和数据完全不变，因为失败发生在 Engine 创建前。
+- 数据库不应该存在：本测试不应新增任何表、扩展或记录。
+- 输出不能泄露：原密码、完整数据库 URL、LLM Key 或其他 `.env` 值。
+
+### 场景 2：数据库停止时探针快速、安全失败并恢复服务
+
+执行目录：项目根目录。目的：验证 3 秒连接超时和固定安全错误。`finally` 会重新启动数据库；不要关闭当前 PowerShell 窗口，直到恢复命令执行完成。
+
+```powershell
+docker compose stop postgres
+
+try {
+    $probeOutput = & python -c "from app.db import check_database_connection; check_database_connection()" 2>&1
+    $probeExitCode = $LASTEXITCODE
+    $probeOutput
+
+    if ($probeExitCode -eq 0) {
+        throw "失败路径未触发：数据库停止后探针不应成功。"
+    }
+
+    if (($probeOutput | Out-String) -notmatch "数据库连接失败") {
+        throw "失败信息不符合约定，请检查 app/db.py。"
+    }
+} finally {
+    docker compose up -d --wait postgres
+}
+
+python -c "from app.db import check_database_connection; print(check_database_connection())"
+```
+
+### 预期结果
+
+- 停库后的探针退出码：非 `0`，通常在约 3 秒内失败。
+- 异常类型：`RuntimeError`，稳定信息只说明数据库连接失败和应检查的配置类别。
+- 恢复服务后的探针退出码：`0`，输出 `1`。
+- 数据库应该保留：`alembic_version=751357b5d274` 和 vector 扩展；`docker compose stop/start` 不删除 Volume。
+- 数据库不应该存在：不应产生额外 revision、表或测试数据。
+- 输出不能泄露：真实密码、完整 DSN、LLM Key；如果输出出现这些内容，Day 1 不得验收或提交。
+
+## 九、常见错误与解决办法
+
+| 错误现象                                                            | 最可能原因                                          | 检查命令或位置                                                                    | 解决方法                                                                           |
+| --------------------------------------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `ModuleNotFoundError: No module named 'sqlalchemy'` 或 `alembic` | 未激活项目虚拟环境或依赖未安装                                | `python -m pip show SQLAlchemy alembic psycopg pgvector`                   | 激活正确虚拟环境；缺包时在项目根目录执行 `python -m pip install -r requirements.txt`               |
+| `缺少必需的数据库配置: ...`                                               | `.env` 不存在、变量为空，或命令不在项目根目录执行                   | 检查 `app/config.py` 的 `BASE_DIR` 和 `.env.example` 变量名；不要打印真实 `.env`         | 在项目根目录创建/补齐本地 `.env`，保持 `POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD` 有非空值 |
+| `invalid literal for int()` 指向 `POSTGRES_PORT`                  | 端口不是整数                                         | `.env` 的 `POSTGRES_PORT`                                                   | 改为未被占用的整数端口，例如 `5432`；不要添加引号或其他字符                                              |
+| `docker compose up` 报端口已占用                                      | 本机已有 PostgreSQL 或其他进程占用端口                      | `Get-NetTCPConnection -LocalPort 5432 -ErrorAction SilentlyContinue`       | 把本地 `.env` 的 `POSTGRES_PORT` 改为一个未占用端口，例如 `5433`，然后重新执行 Compose 和探针            |
+| `postgres` 长时间 `unhealthy`                                      | 初始化配置不一致、Docker Desktop 未就绪或数据库启动失败            | `docker compose ps postgres`；`docker compose logs --tail 50 postgres`      | 先确认 Docker Desktop 正常，再核对 Compose 变量名；不要删除 Volume，保留日志并针对首个错误处理                |
+| 探针输出 `数据库连接失败`                                                  | 服务未启动、主机/端口错误，或现有 Volume 的初始化用户与当前 `.env` 不一致  | `docker compose ps postgres`；核对 `.env.example` 的变量名和本机配置                   | 先让容器健康；如 Volume 已由另一套账号初始化，不要删除它，改用匹配的本地配置或新建明确命名的专用学习数据库环境                    |
+| `permission denied to create extension vector`                  | 当前数据库用户没有创建扩展权限                                | `docker compose exec -T postgres ... psql` 的当前用户查询；迁移日志                    | 本地 Compose 应使用初始化时的 `POSTGRES_USER` 超级用户执行 Day 1 基线；共享数据库请让管理员预装扩展，不要自行提权      |
+| `alembic current` 出现多个 head 或 revision 找不到                      | revision 链冲突、文件缺失或工作区切换不完整                     | `python -m alembic heads`；`python -m alembic history`；`git status --short` | 停止迁移，先确认唯一 head 和文件来源；不要用破坏性 Git 命令覆盖用户改动                                      |
+| downgrade 报 vector 被其他对象依赖                                      | 数据库已有 vector 列、索引或其他依赖，不适合做 Day 1 往返           | 执行第六节的 `information_schema.columns` 计数；查看 Alembic 首个错误                     | 不使用 `CASCADE`，不删除对象或 Volume；改用没有业务数据的专用学习数据库完成往返验证                             |
+| 离线模式或日志中出现未脱敏 URL                                               | `migrations/env.py` 仍在使用 `hide_password=False` | `rg -n "hide_password" migrations/env.py`                                  | 按步骤 3 完整替换，确保唯一调用为 `hide_password=True`，泄密输出不得保存或提交                            |
+
+## 十、检查最终代码差异
+
+```powershell
+git status --short
+git diff -- app/db.py migrations/env.py docs/17天每日学习/Day01.md
+git diff --check
+```
+
+重点检查：
+
+- `app/db.py` 只增加 Day 1 所需的配置校验和安全探针，没有业务模型、Repository 或 API 代码。
+- `migrations/env.py` 不再出现 `hide_password=False`，在线迁移仍复用应用 Engine。
+- 没有改动现有 vector revision 的 ID、`down_revision` 或 SQL。
+- diff 中没有 `.env`、密码、API Key、数据库数据文件、缓存或无关旧文档。
+- `git status --short` 中原有的文档重构仍保持原状，后续 `git add` 不应把它们意外暂存。
+- 第十五节只记录结果摘要，不粘贴包含秘密的完整错误日志。
+
+## 十一、Git 提交
+
+只有连接探针、迁移往返、缺配置失败路径和停库失败路径全部验收通过，并已填写第十五节后才执行：
+
+```powershell
+git add app/db.py migrations/env.py docs/17天每日学习/Day01.md
+git diff --cached -- app/db.py migrations/env.py docs/17天每日学习/Day01.md
+git commit -m "build: establish PostgreSQL migration baseline"
+```
+
+如果 `git diff --cached` 出现上述三个路径以外的内容，先停止提交并逐个核对暂存边界；不要使用 `git add .`，测试未通过时不要提交。
+
+## 十二、面试高频问题与参考答案
+
+### 问题 1：项目已经用了 SQLAlchemy，为什么还需要 psycopg？
+
+#### 30 秒参考答案
+
+SQLAlchemy 不是 PostgreSQL 网络驱动。当前项目由 SQLAlchemy 提供 URL、Engine、连接池、Connection、Session 和后续 ORM 能力，但 `postgresql+psycopg` 中的 psycopg 才负责遵循 PostgreSQL 协议建立真实连接并发送 SQL。把两者分开后，业务代码依赖稳定的 SQLAlchemy 抽象，同时仍需要一个与 PostgreSQL 通信的具体驱动。
+
+#### 继续追问：如果只安装 psycopg，不用 SQLAlchemy 可以吗？
+
+可以直接使用 psycopg 手写 SQL 和事务，但当前项目后续要建立三张 ORM 表、Repository、请求级 Session 和 Alembic metadata，SQLAlchemy 能统一这些边界并减少分散的连接与映射代码。对非常小的脚本只用 psycopg也合理，但不适合本项目后续的分层和迁移目标。
+
+#### 回答时要引用的项目证据
+
+- `requirements.txt` 中固定的 `SQLAlchemy==2.0.52` 与 `psycopg[binary]==3.3.4`。
+- `app/db.py` 的 `postgresql+psycopg` URL、Engine 和 `SELECT 1` 探针。
+- 实际连接探针输出 `1`。
+
+### 问题 2：Engine、Connection 和 Session 有什么区别？
+
+#### 30 秒参考答案
+
+Engine 是应用级数据库入口和连接池管理者，一般在进程内创建一次；Connection 是从 Engine 的连接池临时借出的一条连接；Session 是一次请求或业务工作单元中的 ORM 上下文，它跟踪对象并承担 flush、commit、rollback 等职责。当前 Day 1 探针只借出 Connection 执行只读 `SELECT 1`，后续 Repository 才会使用 `SessionLocal()` 创建独立 Session。
+
+#### 继续追问：为什么不能所有请求共享一个全局 Session？
+
+Session 持有事务和对象状态，共享会让不同请求互相污染事务、并发状态和异常回滚。当前项目只全局复用线程安全的 Engine/Session 工厂，具体 Session 应由一次请求或业务工作单元创建、提交或回滚并最终关闭。
+
+#### 回答时要引用的项目证据
+
+- `app/db.py` 中模块级 `engine` 和 `SessionLocal` 工厂。
+- `check_database_connection()` 中 `with engine.connect()` 的借出/归还边界。
+- Day 1 没有创建全局 Session，也没有对只读探针执行 commit。
+
+### 问题 3：为什么创建 Engine 成功，不代表数据库已经可连接？
+
+#### 30 秒参考答案
+
+SQLAlchemy 的 `create_engine()` 默认是惰性的，主要完成配置和连接池对象构造，通常到第一次 `connect()` 或执行 SQL 时才真正让 psycopg 连接 PostgreSQL。因此我单独提供 `check_database_connection()`，用 3 秒连接超时执行 `SELECT 1`；只有返回 `1` 才能证明应用、驱动、网络、认证和数据库都真实打通。
+
+#### 继续追问：`pool_pre_ping=True` 能代替启动探针吗？
+
+不能完全代替。`pool_pre_ping` 是每次从池中取出旧连接时先检查连接是否仍有效，解决陈旧连接问题；主动探针则在部署、排错或验收时给出明确的即时可用性证据。两者目标互补。
+
+#### 回答时要引用的项目证据
+
+- `app/db.py` 的 `pool_pre_ping=True`、`connect_timeout=3` 和 `SELECT 1`。
+- 正常路径的实际输出 `1`。
+- 停止 PostgreSQL 后探针非零退出、恢复后重新输出 `1` 的记录。
+
+### 问题 4：为什么用 Alembic，而不是直接调用 `Base.metadata.create_all()`？
+
+#### 30 秒参考答案
+
+`create_all()` 适合快速创建当前 metadata 中缺失的表，但不会形成可审查的结构演进历史，也不能可靠表达扩展启用、字段变化和回滚步骤。当前项目把 vector 扩展作为 Alembic 基线 revision，真实验证 upgrade、downgrade 和再次 upgrade；Day 2 的业务表会继续接在同一 revision 链上。
+
+#### 继续追问：`alembic revision --autogenerate` 成功是否说明迁移完成？
+
+不说明。它只生成候选脚本，仍需人工检查 revision 链、字段、约束、索引和向量维度，再执行 `upgrade` 并查询真实数据库。本日用 `alembic_version` 和 `pg_extension` 作为迁移已经落库的证据。
+
+#### 回答时要引用的项目证据
+
+- `migrations/env.py` 的 `target_metadata` 和在线/离线模式。
+- `migrations/versions/751357b5d274_enable_vector_extension.py` 的双向 SQL。
+- 实际 `upgrade → downgrade → upgrade` 与 `alembic_version` 查询结果。
+
+### 问题 5：Python 的 pgvector 包和 PostgreSQL vector 扩展有什么区别？
+
+#### 30 秒参考答案
+
+PostgreSQL vector 扩展运行在数据库端，提供 vector 数据类型、距离运算和后续向量索引能力；Python `pgvector` 包运行在应用端，负责与 SQLAlchemy/psycopg 做类型映射。当前 Day 1 的迁移只保证数据库扩展可复现启用，Day 2 才会用 Python 类型声明 `vector(512)` 字段。
+
+#### 继续追问：为什么不手工进入数据库执行一次 `CREATE EXTENSION`？
+
+手工执行无法保证其他环境重复得到相同状态，也没有回滚和版本证据。把扩展放进首个 Alembic revision 后，新环境可以按 revision 链建立相同基线，并能明确知道它何时被启用。
+
+#### 回答时要引用的项目证据
+
+- `requirements.txt` 的 `pgvector==0.5.0`。
+- Compose 使用的 `pgvector/pgvector:pg16` 镜像。
+- vector 基线迁移和 `pg_extension` 的实际查询结果。
+
+## 十三、今天的完整数据流
+
+### 正常路径
+
+```text
+本地 .env（不提交）
+→ app.config 加载 PostgreSQL 配置
+→ build_database_url() 校验必需项并构造 URL 对象
+→ create_engine() 创建应用级 Engine 和连接池
+→ Alembic 通过 Engine 获取 Connection
+→ upgrade 执行 CREATE EXTENSION vector
+→ PostgreSQL 写入 alembic_version 并启用 vector
+→ downgrade 执行 DROP EXTENSION vector
+→ 再次 upgrade 恢复 head
+→ check_database_connection() 借出 Connection
+→ psycopg 连接 PostgreSQL 并执行 SELECT 1
+→ 返回 1，Connection 归还连接池
+```
+
+### 失败路径
+
+```text
+配置为空
+→ build_database_url() 在 Engine 创建前识别缺失项
+→ 只返回缺失变量名
+→ 不连接数据库、不修改 revision
+
+数据库停止
+→ check_database_connection() 尝试连接
+→ connect_timeout 在约 3 秒内结束等待
+→ SQLAlchemyError 被转换为固定 RuntimeError，底层异常链被抑制
+→ 不泄露密码、不修改数据库
+→ Compose 恢复 PostgreSQL
+→ 探针再次返回 1
+```
+
+## 十四、完成标准
+
+```text
+[ ] 能结合本项目解释 SQLAlchemy 为什么仍然需要 psycopg，以及 Engine 与 Session 的生命周期差异
+[ ] 能解释 Alembic migration 为什么不能被 create_all() 或“生成了 revision 文件”替代
+[ ] app/db.py 已完成空配置校验，错误只列出缺失变量名
+[ ] app/db.py 的连接探针真实返回 1，且数据库停止时在约 3 秒内安全失败
+[ ] migrations/env.py 的离线 URL 使用 hide_password=True，输出中没有真实密码或完整未脱敏 DSN
+[ ] vector 基线已在专用学习数据库完成 upgrade → downgrade → upgrade，最终恢复到 751357b5d274 (head)
+[ ] 已保存 alembic_version、pg_extension 和 SELECT 1 的真实结果摘要
+[ ] 配置缺失与停库两个失败路径均未修改数据库，停库测试后服务和探针已恢复正常
+[ ] 能不看代码复述“配置 → Engine → psycopg → PostgreSQL → Alembic/vector”和失败路径
+[ ] git diff 只包含 app/db.py、migrations/env.py 和本 Day 1 记录，不包含秘密或其他文档重构；验收后完成边界清晰的 commit
+```
+
+## 十五、实际执行记录
+
+- 实际完成：已完成
+- 正常路径结果：已通过
+- 失败路径结果：已完成
+- 遇到的错误：暂无
+- 最终解决方式：暂无
+- Git commit：已提交

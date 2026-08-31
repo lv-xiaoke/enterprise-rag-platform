@@ -15,10 +15,10 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    url = engine.url.render_as_string(hide_password=False)
+    safe_url = engine.url.render_as_string(hide_password=True)
 
     context.configure(
-        url=url,
+        url=safe_url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},

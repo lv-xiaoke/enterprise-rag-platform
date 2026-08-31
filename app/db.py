@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 # DeclarativeBase 用来创建 ORM 模型的共同父类;而 sessionmaker 是：Session 的工厂。
 from app.config import (
@@ -12,8 +13,21 @@ from app.config import (
 
 
 def build_database_url() -> URL:
-    # 根据配置生成 PostgreSQL 数据库地址。
-    # [你来完成] 检查 DB、USER、PASSWORD 是否为空；缺失时只报告变量名。
+    required_settings = {
+        "POSTGRES_DB": POSTGRES_DB,
+        "POSTGRES_USER": POSTGRES_USER,
+        "POSTGRES_PASSWORD": POSTGRES_PASSWORD,
+    }
+    missing_settings = [
+        name
+        for name, value in required_settings.items()
+        if not value.strip()
+    ]
+    if missing_settings:
+        raise RuntimeError(
+            "缺少必需的数据库配置: " + ", ".join(missing_settings)
+        )
+
     return URL.create(
         drivername="postgresql+psycopg",
         username=POSTGRES_USER,
@@ -45,7 +59,12 @@ SessionLocal = sessionmaker(
 # SessionLocal 不是一个具体的 Session, 它是：创建 Session 的工厂
 
 def check_database_connection() -> int:
-    with engine.connect() as connection:
-        return connection.execute(text("SELECT 1")).scalar_one()
+    try:
+        with engine.connect() as connection:
+            return connection.execute(text("SELECT 1")).scalar_one()
+    except SQLAlchemyError:
+        raise RuntimeError(
+            "数据库连接失败，请检查 PostgreSQL 服务状态和 POSTGRES_* 配置。"
+        ) from None
 
 # 真正测试 PostgreSQL 能不能连接。
