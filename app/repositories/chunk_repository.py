@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.orm_models import Chunk
 
-
+# ChunkCreate 描述“准备创建的 Chunk 数据”
 @dataclass(frozen=True)
 class ChunkCreate:
     page_number: int
@@ -15,10 +15,12 @@ class ChunkCreate:
     embedding: list[float]
 
 
+# ChunkRepository 封装对 Chunk 表的数据库操作
 class ChunkRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
+    # bulk_create 批量插入 Chunk
     def bulk_create(
         self,
         document_id: int,
@@ -42,6 +44,7 @@ class ChunkRepository:
         self._session.flush()
         return chunk_models
 
+    # 查询某个文档的所有 Chunk
     def list_by_document(self, document_id: int) -> list[Chunk]:
         statement = (
             select(Chunk)
