@@ -19,6 +19,9 @@ from app.models import (
     DocumentResponse,
     DocumentUploadResponse,
     KnowledgeBaseCreateRequest,
+    KnowledgeBaseQueryRequest,
+    KnowledgeBaseQueryResponse,
+    KnowledgeBaseQuerySource,
     KnowledgeBaseResponse,
     Message,
     RAGChatRequest,
@@ -35,6 +38,12 @@ from app.repositories.knowledge_base_repository import (
     KnowledgeBaseRepository,
 )
 from app.services.chunk_service import split_text
+
+from app.services.database_rag_service import (
+    DatabaseRAGService,
+    RAGConfigurationError,
+)
+
 from app.services.document_ingestion_service import (
     DocumentIngestionService,
 )
@@ -42,6 +51,9 @@ from app.services.embedding_service import EmbeddingService
 from app.services.llm_service import LLMService
 from app.services.pdf_service import PDFService
 from app.services.rag_service import RAGService
+
+from app.services.retrieval_service import RetrievalService
+
 from app.services.vector_store import (
     DocumentChunk,
     FAISSVectorStore,
@@ -333,6 +345,70 @@ def get_knowledge_base_document(
             detail="文档不存在",
         )
     return to_document_response(document)
+
+
+@app.post(
+    "/knowledge-bases/{knowledge_base_id}/query",
+    response_model=KnowledgeBaseQueryResponse,
+)
+async def query_knowledge_base(
+    knowledge_base_id: int,
+    request: KnowledgeBaseQueryRequest,
+    session: DatabaseSession,
+) -> KnowledgeBaseQueryResponse:
+    retrieval_service = RetrievalService(
+        session=session,
+        embedding_service=embedding_service,
+    )
+    service = DatabaseRAGService(
+        retrieval_service=retrieval_service,
+        llm_service=llm_service,
+    )
+
+    try:
+        result = await service.answer(
+            knowledge_base_id=knowledge_base_id,
+            question=request.question,
+            top_k=request.top_k,
+        )
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail="知识库不存在",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+    except RAGConfigurationError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="大模型服务未配置",
+        ) from exc
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="问答上游服务暂时不可用",
+        ) from exc
+
+    return KnowledgeBaseQueryResponse(
+        answer=result.answer,
+        refused=result.refused,
+        sources=[
+            KnowledgeBaseQuerySource(
+                chunk_id=source.chunk_id,
+                document_id=source.document_id,
+                filename=source.filename,
+                page_number=source.page_number,
+                chunk_index=source.chunk_index,
+                content=source.content,
+                score=round(source.score, 6),
+            )
+            for source in result.sources
+        ],
+    )
+
 
 
 @app.post("/upload", response_model=UploadResponse)

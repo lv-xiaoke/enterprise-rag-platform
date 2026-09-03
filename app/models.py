@@ -107,3 +107,39 @@ class DocumentUploadResponse(BaseModel):
     document: DocumentResponse
     page_count: int = Field(gt=0)
     chunk_count: int = Field(gt=0)
+
+
+class KnowledgeBaseQueryRequest(BaseModel):
+    """在指定知识库内执行数据库版 RAG 问答。"""
+
+    question: str = Field(
+        min_length=1,
+        max_length=1000,
+        description="针对指定知识库提出的问题",
+    )
+    top_k: int = Field(
+        default=3,
+        ge=1,
+        le=20,
+        description="pgvector 最多返回的候选 Chunk 数量",
+    )
+
+
+class KnowledgeBaseQuerySource(BaseModel):
+    """一条可以回查数据库和原 PDF 页码的 RAG 来源。"""
+
+    chunk_id: int = Field(gt=0)
+    document_id: int = Field(gt=0)
+    filename: str = Field(min_length=1)
+    page_number: int = Field(gt=0)
+    chunk_index: int = Field(ge=0)
+    content: str = Field(min_length=1)
+    score: float = Field(ge=-1.0, le=1.0)
+
+
+class KnowledgeBaseQueryResponse(BaseModel):
+    """数据库版 RAG 的回答、拒答标记和来源。"""
+
+    answer: str = Field(min_length=1)
+    refused: bool
+    sources: list[KnowledgeBaseQuerySource]
