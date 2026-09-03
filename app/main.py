@@ -1,24 +1,45 @@
+from typing import Annotated
+
 from fastapi import (
+    Depends,
     FastAPI,
     Header,
     HTTPException,
     Response,
     UploadFile,
 )
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
 from app.database import get_messages, init_database, save_message
+from app.db import get_db_session
 from app.models import (
     ChatRequest,
     ChatResponse,
+    DocumentResponse,
+    DocumentUploadResponse,
+    KnowledgeBaseCreateRequest,
+    KnowledgeBaseResponse,
     Message,
     RAGChatRequest,
     RAGChatResponse,
-    UploadResponse,
     RAGSource,
+    UploadResponse,
 )
-
-from app.services.llm_service import LLMService
+from app.orm_models import (
+    Document as DocumentModel,
+    KnowledgeBase as KnowledgeBaseModel,
+)
+from app.repositories.document_repository import DocumentRepository
+from app.repositories.knowledge_base_repository import (
+    KnowledgeBaseRepository,
+)
 from app.services.chunk_service import split_text
+from app.services.document_ingestion_service import (
+    DocumentIngestionService,
+)
 from app.services.embedding_service import EmbeddingService
+from app.services.llm_service import LLMService
 from app.services.pdf_service import PDFService
 from app.services.rag_service import RAGService
 from app.services.vector_store import (
@@ -26,6 +47,33 @@ from app.services.vector_store import (
     FAISSVectorStore,
 )
 
+
+DatabaseSession = Annotated[Session, Depends(get_db_session)]
+
+
+def to_knowledge_base_response(
+    knowledge_base: KnowledgeBaseModel,
+) -> KnowledgeBaseResponse:
+    return KnowledgeBaseResponse(
+        id=knowledge_base.id,
+        name=knowledge_base.name,
+        description=knowledge_base.description,
+        created_at=knowledge_base.created_at,
+    )
+
+
+def to_document_response(
+    document: DocumentModel,
+) -> DocumentResponse:
+    return DocumentResponse(
+        id=document.id,
+        knowledge_base_id=document.knowledge_base_id,
+        filename=document.filename,
+        status=document.status,
+        failure_reason=document.failure_reason,
+        created_at=document.created_at,
+        updated_at=document.updated_at,
+    )
 
 app = FastAPI(
     title="Mini RAG Backend",
@@ -105,6 +153,187 @@ async def request_info(
     return {
         "client_name": x_client_name or "unknown"
     }
+
+
+@app.post(
+    "/knowledge-bases",
+    response_model=KnowledgeBaseResponse,
+    status_code=201,
+)
+def create_knowledge_base(
+    request: KnowledgeBaseCreateRequest,
+    session: DatabaseSession,
+) -> KnowledgeBaseResponse:
+    name = request.name.strip()
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="知识库名称不能只包含空格",
+        )
+
+    description = (
+        request.description.strip()
+        if request.description is not None
+        else None
+    )
+    if description == "":
+        description = None
+
+    try:
+        knowledge_base = KnowledgeBaseRepository(session).create(
+            name=name,
+            description=description,
+        )
+        session.commit()
+    except IntegrityError as exc:
+        session.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="知识库名称已存在",
+        ) from exc
+
+    return to_knowledge_base_response(knowledge_base)
+
+
+@app.get(
+    "/knowledge-bases",
+    response_model=list[KnowledgeBaseResponse],
+)
+def list_knowledge_bases(
+    session: DatabaseSession,
+) -> list[KnowledgeBaseResponse]:
+    knowledge_bases = KnowledgeBaseRepository(session).list_all()
+    return [
+        to_knowledge_base_response(knowledge_base)
+        for knowledge_base in knowledge_bases
+    ]
+
+
+@app.get(
+    "/knowledge-bases/{knowledge_base_id}",
+    response_model=KnowledgeBaseResponse,
+)
+def get_knowledge_base(
+    knowledge_base_id: int,
+    session: DatabaseSession,
+) -> KnowledgeBaseResponse:
+    knowledge_base = KnowledgeBaseRepository(session).get(
+        knowledge_base_id
+    )
+    if knowledge_base is None:
+        raise HTTPException(
+            status_code=404,
+            detail="知识库不存在",
+        )
+    return to_knowledge_base_response(knowledge_base)
+
+
+@app.post(
+    "/knowledge-bases/{knowledge_base_id}/documents",
+    response_model=DocumentUploadResponse,
+    status_code=201,
+)
+async def upload_knowledge_base_document(
+    knowledge_base_id: int,
+    file: UploadFile,
+    session: DatabaseSession,
+) -> DocumentUploadResponse:
+    filename = (file.filename or "").strip()
+    if not filename.lower().endswith(".pdf"):
+        raise HTTPException(
+            status_code=400,
+            detail="只支持上传 PDF 文件",
+        )
+
+    pdf_bytes = await file.read()
+    service = DocumentIngestionService(
+        session=session,
+        pdf_service=pdf_service,
+        embedding_service=embedding_service,
+    )
+
+    try:
+        result = service.ingest_pdf(
+            knowledge_base_id=knowledge_base_id,
+            filename=filename,
+            pdf_bytes=pdf_bytes,
+        )
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail="知识库不存在",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="文档处理失败",
+        ) from exc
+
+    document = DocumentRepository(session).get(result.document_id)
+    if document is None:
+        raise HTTPException(
+            status_code=500,
+            detail="文档处理完成但无法读取结果",
+        )
+
+    return DocumentUploadResponse(
+        document=to_document_response(document),
+        page_count=result.page_count,
+        chunk_count=result.chunk_count,
+    )
+
+
+@app.get(
+    "/knowledge-bases/{knowledge_base_id}/documents",
+    response_model=list[DocumentResponse],
+)
+def list_knowledge_base_documents(
+    knowledge_base_id: int,
+    session: DatabaseSession,
+) -> list[DocumentResponse]:
+    knowledge_base = KnowledgeBaseRepository(session).get(
+        knowledge_base_id
+    )
+    if knowledge_base is None:
+        raise HTTPException(
+            status_code=404,
+            detail="知识库不存在",
+        )
+
+    documents = DocumentRepository(
+        session
+    ).list_by_knowledge_base(knowledge_base.id)
+    return [
+        to_document_response(document)
+        for document in documents
+    ]
+
+
+@app.get(
+    "/knowledge-bases/{knowledge_base_id}/documents/{document_id}",
+    response_model=DocumentResponse,
+)
+def get_knowledge_base_document(
+    knowledge_base_id: int,
+    document_id: int,
+    session: DatabaseSession,
+) -> DocumentResponse:
+    document = DocumentRepository(session).get(document_id)
+    if (
+        document is None
+        or document.knowledge_base_id != knowledge_base_id
+    ):
+        raise HTTPException(
+            status_code=404,
+            detail="文档不存在",
+        )
+    return to_document_response(document)
+
 
 @app.post("/upload", response_model=UploadResponse)
 async def upload_pdf(file: UploadFile) -> UploadResponse:

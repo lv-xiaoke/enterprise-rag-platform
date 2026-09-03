@@ -1,8 +1,10 @@
+from collections.abc import Generator
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
-# DeclarativeBase 用来创建 ORM 模型的共同父类;而 sessionmaker 是：Session 的工厂。
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+
 from app.config import (
     POSTGRES_DB,
     POSTGRES_HOST,
@@ -25,7 +27,8 @@ def build_database_url() -> URL:
     ]
     if missing_settings:
         raise RuntimeError(
-            "缺少必需的数据库配置: " + ", ".join(missing_settings)
+            "缺少必需的数据库配置: "
+            + ", ".join(missing_settings)
         )
 
     return URL.create(
@@ -39,24 +42,26 @@ def build_database_url() -> URL:
 
 
 class Base(DeclarativeBase):
-    # Base：所有 ORM 模型的共同父类
     pass
 
 
 engine = create_engine(
     build_database_url(),
-    pool_pre_ping=True,  # 从连接池拿出旧连接之前，先检查它还能不能用。
-    connect_args={"connect_timeout": 3}, # 尝试连接 PostgreSQL 时，最多等 3 秒。
+    pool_pre_ping=True,
+    connect_args={"connect_timeout": 3},
 )
-# 创建整个应用的数据库 Engine。Engine 是：SQLAlchemy 管理数据库连接的核心对象。
-
 
 SessionLocal = sessionmaker(
     bind=engine,
     autoflush=False,
     expire_on_commit=False,
 )
-# SessionLocal 不是一个具体的 Session, 它是：创建 Session 的工厂
+
+
+def get_db_session() -> Generator[Session, None, None]:
+    with SessionLocal() as session:
+        yield session
+
 
 def check_database_connection() -> int:
     try:
@@ -64,7 +69,6 @@ def check_database_connection() -> int:
             return connection.execute(text("SELECT 1")).scalar_one()
     except SQLAlchemyError:
         raise RuntimeError(
-            "数据库连接失败，请检查 PostgreSQL 服务状态和 POSTGRES_* 配置。"
+            "数据库连接失败，请检查 PostgreSQL 服务状态和 "
+            "POSTGRES_* 配置。"
         ) from None
-
-# 真正测试 PostgreSQL 能不能连接。
