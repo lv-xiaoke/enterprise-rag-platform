@@ -1,8 +1,6 @@
 from datetime import datetime
 from typing import Literal
-
-from pydantic import BaseModel, Field
-
+from pydantic import BaseModel, Field, field_validator
 
 DocumentStatus = Literal[
     "pending",
@@ -120,9 +118,17 @@ class KnowledgeBaseQueryRequest(BaseModel):
     top_k: int = Field(
         default=3,
         ge=1,
-        le=20,
+        le=10,
         description="pgvector 最多返回的候选 Chunk 数量",
     )
+
+    @field_validator("question")
+    @classmethod
+    def normalize_question(cls, value: str) -> str:
+        cleaned_value = value.strip()
+        if not cleaned_value:
+            raise ValueError("question 不能为空")
+        return cleaned_value
 
 
 class KnowledgeBaseQuerySource(BaseModel):

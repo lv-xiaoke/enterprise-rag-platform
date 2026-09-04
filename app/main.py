@@ -5,10 +5,12 @@ from fastapi import (
     FastAPI,
     Header,
     HTTPException,
+    Request,
     Response,
     UploadFile,
 )
-from sqlalchemy.exc import IntegrityError
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import get_messages, init_database, save_message
@@ -46,6 +48,8 @@ from app.services.database_rag_service import (
 
 from app.services.document_ingestion_service import (
     DocumentIngestionService,
+    DocumentInputError,
+    DocumentProcessingError,
 )
 from app.services.embedding_service import EmbeddingService
 from app.services.llm_service import LLMService
@@ -92,6 +96,17 @@ app = FastAPI(
     description="一个用于学习 RAG 和 AI 应用开发的后端项目",
     version="0.1.0",
 )
+
+@app.exception_handler(SQLAlchemyError)
+async def handle_database_error(
+    _request: Request,
+    _error: SQLAlchemyError,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "数据库服务暂时不可用"},
+    )
+
 
 # print("开始创建 LLMService")
 llm_service = LLMService()
@@ -251,12 +266,6 @@ async def upload_knowledge_base_document(
     session: DatabaseSession,
 ) -> DocumentUploadResponse:
     filename = (file.filename or "").strip()
-    if not filename.lower().endswith(".pdf"):
-        raise HTTPException(
-            status_code=400,
-            detail="只支持上传 PDF 文件",
-        )
-
     pdf_bytes = await file.read()
     service = DocumentIngestionService(
         session=session,
@@ -275,12 +284,12 @@ async def upload_knowledge_base_document(
             status_code=404,
             detail="知识库不存在",
         ) from exc
-    except ValueError as exc:
+    except DocumentInputError as exc:
         raise HTTPException(
             status_code=400,
             detail=str(exc),
         ) from exc
-    except RuntimeError as exc:
+    except DocumentProcessingError as exc:
         raise HTTPException(
             status_code=500,
             detail="文档处理失败",

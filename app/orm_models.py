@@ -25,6 +25,7 @@ class KnowledgeBase(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # mapped_column() 就是在 Python 类里声明：“这个属性对应数据库表中的这一列”。
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

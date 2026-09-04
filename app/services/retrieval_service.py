@@ -11,7 +11,7 @@ from app.services.embedding_service import EmbeddingService
 
 
 DEFAULT_TOP_K = 3
-MAX_TOP_K = 20
+MAX_TOP_K = 10
 EMBEDDING_DIMENSION = 512
 
 
@@ -50,9 +50,13 @@ class RetrievalService:
                 f"知识库不存在: {knowledge_base_id}"
             )
 
-        query_embedding = self._embedding_service.embed_query(
-            cleaned_question
-        )
+        try:
+            query_embedding = self._embedding_service.embed_query(
+                cleaned_question
+            )
+        except Exception as exc:
+            raise RuntimeError("问题向量生成失败") from exc
+
         self._validate_query_embedding(query_embedding)
 
         return self._chunks.search_similar(

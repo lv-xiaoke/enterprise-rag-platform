@@ -59,8 +59,14 @@ SessionLocal = sessionmaker(
 
 
 def get_db_session() -> Generator[Session, None, None]:
+    # 返回的是一个生成器
     with SessionLocal() as session:
-        yield session
+        try:
+            yield session
+            # yield session 的作用是：把当前创建好的数据库 Session 临时交给外部使用，然后暂停函数；等外部使用完以后，再回来继续执行后面的代码。
+        except Exception:
+            session.rollback()
+            raise
 
 
 def check_database_connection() -> int:

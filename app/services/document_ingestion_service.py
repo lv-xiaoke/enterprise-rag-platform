@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.repositories import (
@@ -16,8 +17,17 @@ from app.services.pdf_service import PDFService
 DEFAULT_CHUNK_SIZE = 200
 DEFAULT_CHUNK_OVERLAP = 40
 EMBEDDING_DIMENSION = 512
+MAX_FILENAME_LENGTH = 255
 
-# 表示一次 PDF 入库成功之后返回的结果。
+
+class DocumentInputError(ValueError):
+    """客户端修改文件输入后可以解决的错误。"""
+
+
+class DocumentProcessingError(RuntimeError):
+    """不能向客户端公开底层细节的文档处理错误。"""
+
+
 @dataclass(frozen=True)
 class DocumentIngestionResult:
     document_id: int
@@ -27,8 +37,7 @@ class DocumentIngestionResult:
     chunk_count: int
     status: str
 
-# 表示已经切好的文本块，但还没有生成 embedding，也还没有写数据库。
-# 为什么名字前面有：下划线？表示它是 DocumentIngestionService 的内部类，外部不应该直接使用它。
+
 @dataclass(frozen=True)
 class _PreparedChunk:
     page_number: int
@@ -63,47 +72,70 @@ class DocumentIngestionService:
         self._documents = DocumentRepository(session)
         self._chunks = ChunkRepository(session)
 
-    # 接收一个 PDF，把它解析、切块、向量化并保存进数据库。
     def ingest_pdf(
         self,
         knowledge_base_id: int,
         filename: str,
         pdf_bytes: bytes,
     ) -> DocumentIngestionResult:
-        cleaned_filename = filename.strip()
-        if not cleaned_filename:
-            raise ValueError("filename 不能为空")
+        cleaned_filename = self._validate_upload(
+            filename=filename,
+            pdf_bytes=pdf_bytes,
+        )
 
-        knowledge_base = self._knowledge_bases.get(knowledge_base_id)
+        try:
+            knowledge_base = self._knowledge_bases.get(
+                knowledge_base_id
+            )
+        except SQLAlchemyError as exc:
+            self._session.rollback()
+            raise DocumentProcessingError(
+                "数据库服务暂时不可用"
+            ) from exc
+
         if knowledge_base is None:
             raise LookupError(
                 f"知识库不存在: {knowledge_base_id}"
             )
 
-        # PDF 真正处理之前，先往数据库建立一条 Document 记录。
-        document = self._documents.create(
-            knowledge_base_id=knowledge_base.id,
-            filename=cleaned_filename,
-            status="processing",
-        )
+        try:
+            document = self._documents.create(
+                knowledge_base_id=knowledge_base.id,
+                filename=cleaned_filename,
+                status="processing",
+            )
+            self._session.commit()
+        except SQLAlchemyError as exc:
+            self._session.rollback()
+            raise DocumentProcessingError(
+                "无法创建文档处理记录"
+            ) from exc
 
-        self._session.commit() # 先把文档保存下来
         document_id = document.id
 
         try:
-            # 从 PDF 二进制内容中提取每一页的文本。
-            pages = self._pdf_service.extract_pages_from_bytes(
-                pdf_bytes
-            )
-            
+            pages = self._extract_pdf_pages(pdf_bytes)
             prepared_chunks = self._prepare_chunks(pages)
 
             if not prepared_chunks:
-                raise ValueError("PDF 没有生成任何 Chunk")
+                raise DocumentInputError(
+                    "PDF 没有生成任何 Chunk"
+                )
 
-            embeddings = self._embedding_service.embed_documents(
-                [chunk.content for chunk in prepared_chunks]
-            )
+            try:
+                embeddings = (
+                    self._embedding_service.embed_documents(
+                        [
+                            chunk.content
+                            for chunk in prepared_chunks
+                        ]
+                    )
+                )
+            except Exception as exc:
+                raise DocumentProcessingError(
+                    "文档向量生成失败"
+                ) from exc
+
             self._validate_embeddings(
                 embeddings=embeddings,
                 expected_count=len(prepared_chunks),
@@ -131,7 +163,9 @@ class DocumentIngestionService:
                 status="ready",
             )
             if ready_document is None:
-                raise RuntimeError("Document 状态更新失败")
+                raise DocumentProcessingError(
+                    "Document 状态更新失败"
+                )
 
             self._session.commit()
 
@@ -152,10 +186,53 @@ class DocumentIngestionService:
                 )
             except Exception as status_error:
                 self._session.rollback()
-                raise RuntimeError(
+                raise DocumentProcessingError(
                     "文档处理失败，且无法保存 failed 状态"
                 ) from status_error
-            raise
+
+            if isinstance(
+                exc,
+                (DocumentInputError, DocumentProcessingError),
+            ):
+                raise
+
+            raise DocumentProcessingError(
+                "文档处理失败"
+            ) from exc
+
+    @staticmethod
+    def _validate_upload(
+        filename: str,
+        pdf_bytes: bytes,
+    ) -> str:
+        cleaned_filename = filename.strip()
+        if not cleaned_filename:
+            raise DocumentInputError("文件名不能为空")
+        if len(cleaned_filename) > MAX_FILENAME_LENGTH:
+            raise DocumentInputError(
+                "文件名不能超过 255 个字符"
+            )
+        if not cleaned_filename.lower().endswith(".pdf"):
+            raise DocumentInputError("只支持上传 PDF 文件")
+        if not pdf_bytes:
+            raise DocumentInputError("PDF 文件不能为空")
+        return cleaned_filename
+
+    def _extract_pdf_pages(
+        self,
+        pdf_bytes: bytes,
+    ) -> list[str]:
+        try:
+            return self._pdf_service.extract_pages_from_bytes(
+                pdf_bytes
+            )
+        except ValueError as exc:
+            safe_message = str(exc).strip()
+            if not safe_message:
+                safe_message = "PDF 文件无法处理"
+            raise DocumentInputError(
+                safe_message[:500]
+            ) from exc
 
     def _prepare_chunks(
         self,
@@ -186,16 +263,14 @@ class DocumentIngestionService:
         expected_count: int,
     ) -> None:
         if len(embeddings) != expected_count:
-            raise RuntimeError(
-                "Chunk 与 Embedding 数量不一致: "
-                f"chunks={expected_count}, embeddings={len(embeddings)}"
+            raise DocumentProcessingError(
+                "Chunk 与 Embedding 数量不一致"
             )
 
-        for index, embedding in enumerate(embeddings):
+        for embedding in embeddings:
             if len(embedding) != EMBEDDING_DIMENSION:
-                raise RuntimeError(
-                    f"第 {index} 个 Embedding 维度应为 "
-                    f"{EMBEDDING_DIMENSION}，实际为 {len(embedding)}"
+                raise DocumentProcessingError(
+                    "Embedding 维度不符合入库约定"
                 )
 
     def _mark_document_failed(
@@ -209,12 +284,14 @@ class DocumentIngestionService:
             failure_reason=self._safe_failure_reason(error),
         )
         if failed_document is None:
-            raise RuntimeError("找不到需要标记失败的 Document")
+            raise DocumentProcessingError(
+                "找不到需要标记失败的 Document"
+            )
         self._session.commit()
 
     @staticmethod
     def _safe_failure_reason(error: Exception) -> str:
-        if isinstance(error, ValueError):
+        if isinstance(error, DocumentInputError):
             message = str(error).strip()
             if message:
                 return message[:500]
