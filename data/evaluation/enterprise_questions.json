@@ -1,0 +1,472 @@
+{
+  "schema_version": 1,
+  "dataset_version": "2026-09-04-v1",
+  "corpus": {
+    "manifest_path": "data/demo_policies/manifest.json",
+    "pdf_directory": "data/demo_policies/pdfs",
+    "corpus_version": "2026-09-04-v1",
+    "document_count": 4,
+    "documents": [
+      {
+        "filename": "员工请假与考勤制度.pdf",
+        "sha256": "7b8a903bf96df31acdb22b0185c28ec8ea56935bfcc88e40de34f140ffddebe8"
+      },
+      {
+        "filename": "差旅与费用报销制度.pdf",
+        "sha256": "8987569d8f6ad10804b8e842de8400336621496cc53cefc34c7fb2be94d84b26"
+      },
+      {
+        "filename": "采购与办公资产管理制度.pdf",
+        "sha256": "ce1959414db895d26c6069b4ff4c2b73069951c60c3380b3f87abd591b16fe6a"
+      },
+      {
+        "filename": "访客与会议室管理办法.pdf",
+        "sha256": "1913d80b4ffbd2ec7783962344ff1802ee43463624af2de4baaaf67d13bc0bc4"
+      }
+    ]
+  },
+  "evaluation": {
+    "default_top_k": 3,
+    "top_k_candidates": [
+      1,
+      3,
+      5
+    ],
+    "current_reference_threshold": 0.55,
+    "threshold_candidates": [
+      0.45,
+      0.55,
+      0.65
+    ],
+    "score_semantics": "cosine_similarity_higher_is_better",
+    "answerable_minimum": 12,
+    "unanswerable_minimum": 6,
+    "required_answerable_categories": [
+      "direct_fact",
+      "comprehensive",
+      "cross_document",
+      "isolation"
+    ]
+  },
+  "cases": [
+    {
+      "id": "direct-leave-01",
+      "category": "direct_fact",
+      "question": "连续三天以上的年假需要提前多久申请，并经过哪些确认？",
+      "answerable": true,
+      "expected_answer": "连续三天以上年假须至少提前七个工作日申请，先由直属负责人确认工作交接，再由人力资源部核对可用假期。",
+      "expected_points": [
+        "至少提前七个工作日",
+        "直属负责人确认工作交接",
+        "人力资源部核对可用假期"
+      ],
+      "expected_refusal": false,
+      "expected_evidence": [
+        {
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 1,
+          "evidence_contains": "连续三天以上年假须至少提前七个工作日申请"
+        },
+        {
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 1,
+          "evidence_contains": "申请先由直属负责人确认工作交接，再由人力资源部核对可用假期"
+        }
+      ]
+    },
+    {
+      "id": "direct-sick-leave-01",
+      "category": "direct_fact",
+      "question": "病假超过一个工作日需要补充什么材料，最晚何时补充？",
+      "answerable": true,
+      "expected_answer": "病假超过一个工作日须提交医疗机构证明，并在返岗后的两个工作日内补充。",
+      "expected_points": [
+        "医疗机构证明",
+        "返岗后的两个工作日内"
+      ],
+      "expected_refusal": false,
+      "expected_evidence": [
+        {
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 2,
+          "evidence_contains": "病假超过一个工作日须提交医疗机构证明，证明应在返岗后的两个工作日内补充"
+        }
+      ]
+    },
+    {
+      "id": "isolation-annual-leave-01",
+      "category": "isolation",
+      "question": "一天以内年假和连续三天以上年假的提前申请要求分别是什么？",
+      "answerable": true,
+      "expected_answer": "一天以内年假至少提前三个工作日申请；连续三天以上年假至少提前七个工作日申请。",
+      "expected_points": [
+        "一天以内至少提前三个工作日",
+        "连续三天以上至少提前七个工作日"
+      ],
+      "expected_refusal": false,
+      "expected_evidence": [
+        {
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 1,
+          "evidence_contains": "一天以内的年假应至少提前三个工作日在系统提交"
+        },
+        {
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 1,
+          "evidence_contains": "连续三天以上年假须至少提前七个工作日申请"
+        }
+      ]
+    },
+    {
+      "id": "cross-trip-01",
+      "category": "cross_document",
+      "question": "员工因公出差时，从出发前到返程后，为了考勤和报销需要完成哪些关键步骤？",
+      "answerable": true,
+      "expected_answer": "员工应在出发前提交并完成差旅审批；审批完成的出差日期按正常出勤登记且无需重复外勤签到；返程后十个工作日内提交已批准的差旅申请、费用明细和合法有效发票进行报销。",
+      "expected_points": [
+        "出发前提交差旅申请",
+        "审批完成的出差日期按正常出勤登记",
+        "无需重复提交外勤签到",
+        "返程后十个工作日内提交报销",
+        "已批准的差旅申请、费用明细和合法有效发票"
+      ],
+      "expected_refusal": false,
+      "expected_evidence": [
+        {
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 2,
+          "evidence_contains": "审批完成的出差日期按正常出勤登记，出差期间无需重复提交外勤签到"
+        },
+        {
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "evidence_contains": "员工因公出差应在出发前提交差旅申请"
+        },
+        {
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 2,
+          "evidence_contains": "员工应在返程后十个工作日内提交报销"
+        }
+      ]
+    },
+    {
+      "id": "direct-hotel-01",
+      "category": "direct_fact",
+      "question": "境内出差时，一线城市和其他城市的住宿上限分别是多少？",
+      "answerable": true,
+      "expected_answer": "一线城市住宿上限为每晚六百元，其他城市住宿上限为每晚四百五十元。",
+      "expected_points": [
+        "一线城市每晚六百元",
+        "其他城市每晚四百五十元"
+      ],
+      "expected_refusal": false,
+      "expected_evidence": [
+        {
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "evidence_contains": "一线城市住宿上限为每晚六百元，其他城市住宿上限为每晚四百五十元"
+        }
+      ]
+    },
+    {
+      "id": "isolation-travel-allowance-01",
+      "category": "isolation",
+      "question": "市内交通补助和出差餐费补助的每日上限分别是多少？",
+      "answerable": true,
+      "expected_answer": "市内交通补助上限为每日八十元，出差餐费补助上限为每日一百元。",
+      "expected_points": [
+        "市内交通每日八十元",
+        "餐费每日一百元"
+      ],
+      "expected_refusal": false,
+      "expected_evidence": [
+        {
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "evidence_contains": "市内交通补助上限为每日八十元"
+        },
+        {
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "evidence_contains": "出差餐费补助上限为每日一百元"
+        }
+      ]
+    },
+    {
+      "id": "comprehensive-reimbursement-01",
+      "category": "comprehensive",
+      "question": "员工返程后提交报销需要哪些材料，财务复核和付款分别需要多久？",
+      "answerable": true,
+      "expected_answer": "员工应在返程后十个工作日内提交已批准的差旅申请、费用明细和合法有效发票；财务复核在五个工作日内完成，通过复核后在三个工作日内进入付款流程。",
+      "expected_points": [
+        "返程后十个工作日内",
+        "已批准的差旅申请",
+        "费用明细",
+        "合法有效的发票",
+        "财务复核五个工作日",
+        "通过复核后三个工作日内进入付款流程"
+      ],
+      "expected_refusal": false,
+      "expected_evidence": [
+        {
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 2,
+          "evidence_contains": "材料包括已批准的差旅申请、费用明细和合法有效的发票"
+        },
+        {
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 2,
+          "evidence_contains": "财务复核在五个工作日内完成"
+        },
+        {
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 2,
+          "evidence_contains": "通过复核的报销在三个工作日内进入付款流程"
+        }
+      ]
+    },
+    {
+      "id": "comprehensive-procurement-tier-01",
+      "category": "comprehensive",
+      "question": "办公采购在一千元以内、一千元以上至五千元以及超过五千元时，审批和报价要求有什么区别？",
+      "answerable": true,
+      "expected_answer": "一千元以内由申请人直属负责人审批；超过一千元且不超过五千元需要至少两家供应商报价并由部门负责人批准；超过五千元需要三家供应商报价，并由部门负责人和财务负责人共同确认预算。",
+      "expected_points": [
+        "一千元以内由直属负责人审批",
+        "超过一千元且不超过五千元至少两家报价",
+        "超过一千元且不超过五千元由部门负责人批准",
+        "超过五千元三家报价",
+        "部门负责人和财务负责人共同确认预算"
+      ],
+      "expected_refusal": false,
+      "expected_evidence": [
+        {
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 1,
+          "evidence_contains": "单次采购金额一千元以内由申请人直属负责人审批"
+        },
+        {
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 1,
+          "evidence_contains": "超过一千元且不超过五千元的采购，需要至少两家供应商报价并由部门负责人批准"
+        },
+        {
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 1,
+          "evidence_contains": "单次采购金额超过五千元须取得三家供应商报价，并由部门负责人和财务负责人共同确认预算"
+        }
+      ]
+    },
+    {
+      "id": "cross-procurement-payment-01",
+      "category": "cross_document",
+      "question": "办公设备到货后，要完成资产登记并进入财务付款，需要经过哪些关键动作和凭证？",
+      "answerable": true,
+      "expected_answer": "申请人和资产管理员应在到货后两个工作日内完成验收；达到固定资产登记标准的设备由行政部门登记资产信息；验收通过后汇总采购审批、报价、验收记录和合法发票交财务复核，缺少验收记录时财务不发起付款。",
+      "expected_points": [
+        "到货后两个工作日内完成验收",
+        "行政部门登记资产信息",
+        "采购审批记录",
+        "报价或比价记录",
+        "到货验收记录",
+        "合法发票",
+        "缺少验收记录不发起付款"
+      ],
+      "expected_refusal": false,
+      "expected_evidence": [
+        {
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 2,
+          "evidence_contains": "申请人和资产管理员应在到货后两个工作日内完成验收"
+        },
+        {
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 2,
+          "evidence_contains": "达到固定资产登记标准的设备，由行政部门登记资产编号、所属部门、保管角色和领用日期"
+        },
+        {
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 2,
+          "evidence_contains": "采购组在验收通过后汇总审批记录、报价记录、验收记录和发票，交财务部进行付款复核"
+        },
+        {
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 2,
+          "evidence_contains": "办公设备采购付款应同时附采购审批记录、供应商报价或比价记录、到货验收记录和合法发票"
+        },
+        {
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 2,
+          "evidence_contains": "缺少验收记录时，财务部暂不发起付款"
+        }
+      ]
+    },
+    {
+      "id": "direct-visitor-01",
+      "category": "direct_fact",
+      "question": "外部访客进入办公区需要提前多久登记，登记哪些信息？",
+      "answerable": true,
+      "expected_answer": "外部访客须至少提前一个工作日登记，由接待部门填写来访单位类别、来访目的、预计时间、人数和接待角色。",
+      "expected_points": [
+        "至少提前一个工作日",
+        "来访单位类别",
+        "来访目的",
+        "预计时间",
+        "人数",
+        "接待角色"
+      ],
+      "expected_refusal": false,
+      "expected_evidence": [
+        {
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 1,
+          "evidence_contains": "外部访客须至少提前一个工作日登记"
+        },
+        {
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 1,
+          "evidence_contains": "由接待部门填写来访单位类别、来访目的、预计时间、人数和接待角色"
+        }
+      ]
+    },
+    {
+      "id": "isolation-visitor-meeting-01",
+      "category": "isolation",
+      "question": "接待外部访客开会时，只预订会议室是否足够？还需要做什么？",
+      "answerable": true,
+      "expected_answer": "不够；必须同时完成访客登记和会议室预订，会议室预订不能替代访客预约。",
+      "expected_points": [
+        "同时完成访客登记和会议室预订",
+        "会议室预订不能替代访客预约"
+      ],
+      "expected_refusal": false,
+      "expected_evidence": [
+        {
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 2,
+          "evidence_contains": "接待外部访客时须同时完成访客登记和会议室预订"
+        },
+        {
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 2,
+          "evidence_contains": "会议室预订本身不能替代访客预约"
+        }
+      ]
+    },
+    {
+      "id": "comprehensive-meeting-01",
+      "category": "comprehensive",
+      "question": "会议取消时应提前多久释放会议室，连续两次未使用且未取消会有什么后果？",
+      "answerable": true,
+      "expected_answer": "应在会议开始前两小时取消预订；连续两次未使用且未取消时，行政部可以暂停该组织者一周的提前预订权限。",
+      "expected_points": [
+        "会议开始前两小时取消",
+        "连续两次未使用且未取消",
+        "暂停一周提前预订权限"
+      ],
+      "expected_refusal": false,
+      "expected_evidence": [
+        {
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 2,
+          "evidence_contains": "应在会议开始前两小时取消预订"
+        },
+        {
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 2,
+          "evidence_contains": "连续两次未使用且未取消的，行政部可以暂停该组织者一周的提前预订权限"
+        }
+      ]
+    },
+    {
+      "id": "unknown-equity-01",
+      "category": "unanswerable",
+      "question": "公司的股票期权归属周期和行权条件是什么？",
+      "answerable": false,
+      "expected_answer": "当前知识库中没有找到足够的信息。",
+      "expected_points": [
+        "明确拒答",
+        "不编造归属周期或行权条件",
+        "不返回伪造来源"
+      ],
+      "expected_refusal": true,
+      "absent_topic": "股权激励与股票期权归属",
+      "expected_evidence": []
+    },
+    {
+      "id": "unknown-overseas-visa-01",
+      "category": "unanswerable",
+      "question": "员工去海外出差时，公司如何办理签证？",
+      "answerable": false,
+      "expected_answer": "当前知识库中没有找到足够的信息。",
+      "expected_points": [
+        "明确拒答",
+        "不编造签证办理流程",
+        "不返回伪造来源"
+      ],
+      "expected_refusal": true,
+      "absent_topic": "海外出差签证与境外补贴",
+      "expected_evidence": []
+    },
+    {
+      "id": "unknown-overseas-allowance-01",
+      "category": "unanswerable",
+      "question": "海外出差的境外住宿和每日补贴标准是多少？",
+      "answerable": false,
+      "expected_answer": "当前知识库中没有找到足够的信息。",
+      "expected_points": [
+        "明确拒答",
+        "不把境内差旅标准当成境外标准",
+        "不返回伪造来源"
+      ],
+      "expected_refusal": true,
+      "absent_topic": "海外出差签证与境外补贴",
+      "expected_evidence": []
+    },
+    {
+      "id": "unknown-vpn-01",
+      "category": "unanswerable",
+      "question": "员工申请 VPN 远程接入需要经过哪些信息安全审批？",
+      "answerable": false,
+      "expected_answer": "当前知识库中没有找到足够的信息。",
+      "expected_points": [
+        "明确拒答",
+        "不编造 VPN 或信息安全审批",
+        "不返回伪造来源"
+      ],
+      "expected_refusal": true,
+      "absent_topic": "远程接入、VPN 与信息安全授权",
+      "expected_evidence": []
+    },
+    {
+      "id": "unknown-contract-refund-01",
+      "category": "unanswerable",
+      "question": "客户要求合同退款时，退款比例和违约赔偿如何计算？",
+      "answerable": false,
+      "expected_answer": "当前知识库中没有找到足够的信息。",
+      "expected_points": [
+        "明确拒答",
+        "不编造退款比例或赔偿公式",
+        "不返回伪造来源"
+      ],
+      "expected_refusal": true,
+      "absent_topic": "客户合同退款与违约赔偿",
+      "expected_evidence": []
+    },
+    {
+      "id": "unknown-disaster-recovery-01",
+      "category": "unanswerable",
+      "question": "生产事故发生后，系统的灾难恢复 RTO 和 RPO 分别是多少？",
+      "answerable": false,
+      "expected_answer": "当前知识库中没有找到足够的信息。",
+      "expected_points": [
+        "明确拒答",
+        "不编造 RTO 或 RPO",
+        "不返回伪造来源"
+      ],
+      "expected_refusal": true,
+      "absent_topic": "生产事故响应与灾难恢复",
+      "expected_evidence": []
+    }
+  ]
+}
