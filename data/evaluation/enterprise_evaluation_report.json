@@ -1,0 +1,3506 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-09-06T02:10:21.856522+00:00",
+  "dataset": {
+    "path": "data\\evaluation\\enterprise_questions.json",
+    "version": "2026-09-04-v1",
+    "corpus_version": "2026-09-04-v1"
+  },
+  "knowledge_base": {
+    "id": 20,
+    "name": "day11-evaluation-20260905-205436",
+    "documents": [
+      {
+        "id": 20,
+        "filename": "员工请假与考勤制度.pdf",
+        "status": "ready"
+      },
+      {
+        "id": 21,
+        "filename": "差旅与费用报销制度.pdf",
+        "status": "ready"
+      },
+      {
+        "id": 22,
+        "filename": "采购与办公资产管理制度.pdf",
+        "status": "ready"
+      },
+      {
+        "id": 23,
+        "filename": "访客与会议室管理办法.pdf",
+        "status": "ready"
+      }
+    ]
+  },
+  "experiment": {
+    "retrieval_backend": "PostgreSQL + pgvector",
+    "embedding_model": "BAAI/bge-small-zh-v1.5",
+    "score_semantics": "cosine_similarity_higher_is_better",
+    "top_k_candidates": [
+      1,
+      3,
+      5
+    ],
+    "threshold_candidates": [
+      0.45,
+      0.55,
+      0.65
+    ],
+    "reference_threshold": 0.55,
+    "repetitions": 2,
+    "warmup_case_id": "direct-leave-01",
+    "latency_scope": "预热后的 Query Embedding + pgvector Top-K 检索；不含模型初始化、HTTP 和 LLM 生成。"
+  },
+  "summary": {
+    "case_count": 18,
+    "answerable_count": 12,
+    "unanswerable_count": 6,
+    "completed_case_count": 18,
+    "failed_case_count": 0,
+    "retrieval": {
+      "1": {
+        "recall_at_k": 0.616667,
+        "mrr_at_k": 0.916667,
+        "full_evidence_case_rate": 0.416667
+      },
+      "3": {
+        "recall_at_k": 0.972222,
+        "mrr_at_k": 0.958333,
+        "full_evidence_case_rate": 0.916667
+      },
+      "5": {
+        "recall_at_k": 0.972222,
+        "mrr_at_k": 0.958333,
+        "full_evidence_case_rate": 0.916667
+      }
+    },
+    "parameter_grid": [
+      {
+        "top_k": 1,
+        "threshold": 0.45,
+        "refusal_accuracy": 0.777778,
+        "answerable_acceptance_rate": 1.0,
+        "unanswerable_refusal_rate": 0.333333,
+        "balanced_refusal_accuracy": 0.666667,
+        "recall_at_k": 0.616667
+      },
+      {
+        "top_k": 1,
+        "threshold": 0.55,
+        "refusal_accuracy": 0.888889,
+        "answerable_acceptance_rate": 1.0,
+        "unanswerable_refusal_rate": 0.666667,
+        "balanced_refusal_accuracy": 0.833333,
+        "recall_at_k": 0.616667
+      },
+      {
+        "top_k": 1,
+        "threshold": 0.65,
+        "refusal_accuracy": 0.944444,
+        "answerable_acceptance_rate": 0.916667,
+        "unanswerable_refusal_rate": 1.0,
+        "balanced_refusal_accuracy": 0.958333,
+        "recall_at_k": 0.616667
+      },
+      {
+        "top_k": 3,
+        "threshold": 0.45,
+        "refusal_accuracy": 0.777778,
+        "answerable_acceptance_rate": 1.0,
+        "unanswerable_refusal_rate": 0.333333,
+        "balanced_refusal_accuracy": 0.666667,
+        "recall_at_k": 0.972222
+      },
+      {
+        "top_k": 3,
+        "threshold": 0.55,
+        "refusal_accuracy": 0.888889,
+        "answerable_acceptance_rate": 1.0,
+        "unanswerable_refusal_rate": 0.666667,
+        "balanced_refusal_accuracy": 0.833333,
+        "recall_at_k": 0.972222
+      },
+      {
+        "top_k": 3,
+        "threshold": 0.65,
+        "refusal_accuracy": 0.944444,
+        "answerable_acceptance_rate": 0.916667,
+        "unanswerable_refusal_rate": 1.0,
+        "balanced_refusal_accuracy": 0.958333,
+        "recall_at_k": 0.972222
+      },
+      {
+        "top_k": 5,
+        "threshold": 0.45,
+        "refusal_accuracy": 0.777778,
+        "answerable_acceptance_rate": 1.0,
+        "unanswerable_refusal_rate": 0.333333,
+        "balanced_refusal_accuracy": 0.666667,
+        "recall_at_k": 0.972222
+      },
+      {
+        "top_k": 5,
+        "threshold": 0.55,
+        "refusal_accuracy": 0.888889,
+        "answerable_acceptance_rate": 1.0,
+        "unanswerable_refusal_rate": 0.666667,
+        "balanced_refusal_accuracy": 0.833333,
+        "recall_at_k": 0.972222
+      },
+      {
+        "top_k": 5,
+        "threshold": 0.65,
+        "refusal_accuracy": 0.944444,
+        "answerable_acceptance_rate": 0.916667,
+        "unanswerable_refusal_rate": 1.0,
+        "balanced_refusal_accuracy": 0.958333,
+        "recall_at_k": 0.972222
+      }
+    ],
+    "selected_parameters": {
+      "top_k": 3,
+      "threshold": 0.65,
+      "selection_rule": "依次最大化 balanced_refusal_accuracy、Recall@K 和 refusal_accuracy；仍相同时优先接近当前参考阈值，再选择更小的 Top-K。",
+      "reason": "候选组合中 Top-K=3、threshold=0.65 的平衡拒答准确率为 0.958333，Recall@K 为 0.972222，总体拒答正确率为 0.944444。"
+    },
+    "retrieval_latency_ms": {
+      "sample_count": 36,
+      "mean_ms": 12.797136,
+      "p50_ms": 12.86395,
+      "p95_ms": 15.2546,
+      "max_ms": 15.3857
+    }
+  },
+  "reproducibility": {
+    "repetitions": 2,
+    "stable_case_count": 18,
+    "unstable_case_ids": []
+  },
+  "failure_cases": [
+    {
+      "id": "cross-trip-01",
+      "category": "cross_document",
+      "reasons": [
+        "incomplete_evidence_recall:0.666667"
+      ],
+      "top_source": {
+        "rank": 1,
+        "chunk_id": 81,
+        "document_id": 20,
+        "knowledge_base_id": 20,
+        "filename": "员工请假与考勤制度.pdf",
+        "page_number": 2,
+        "chunk_index": 5,
+        "content": "记录诊断详情，也不要求在公开\n演示数据中填写姓名、证件号码或联系方式。\n五、出差期间的考勤\n 员工应在出发前完成差旅申请。审批完成的出差日期按正常出勤登记，出差期间无需重复提交外勤\n签到，但每日工作安排仍由直属负责人确认。\n 出差交通、住宿、餐费标准和返程后的报销期限不在本文件定义，统一以《差旅与费用报销制度》\n为准。未完成差旅审批的行程不能仅凭考勤记录获得费用报销。\n六、异常更正\n 漏签员工应在",
+        "score": 0.717215
+      }
+    },
+    {
+      "id": "direct-hotel-01",
+      "category": "direct_fact",
+      "reasons": [
+        "refusal_classification_mismatch"
+      ],
+      "top_source": {
+        "rank": 1,
+        "chunk_id": 84,
+        "document_id": 21,
+        "knowledge_base_id": 20,
+        "filename": "差旅与费用报销制度.pdf",
+        "page_number": 1,
+        "chunk_index": 1,
+        "content": "请，写明目的、地点、起止日期、预计费用和工作交付。直属\n负责人批准业务必要性后，由财务部检查预算科目。\n 未经批准自行发生的费用原则上不予报销。紧急出差应在出发前取得直属负责人书面确认，并在返\n程后两个工作日内补齐系统申请。\n二、住宿与交通标准\n 境内差旅按城市类别控制住宿预算：一线城市住宿上限为每晚六百元，其他城市住宿上限为每晚四\n百五十元。金额均为虚构的含税上限，不代表任何真实企业标准。\n 员",
+        "score": 0.638058
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "direct-leave-01",
+      "category": "direct_fact",
+      "question": "连续三天以上的年假需要提前多久申请，并经过哪些确认？",
+      "answerable": true,
+      "expected_refusal": false,
+      "status": "completed",
+      "error_type": null,
+      "latency_ms_samples": [
+        11.2329,
+        9.6483
+      ],
+      "retrieval_stable_across_repetitions": true,
+      "retrieved_sources": [
+        {
+          "rank": 1,
+          "chunk_id": 79,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 1,
+          "chunk_index": 3,
+          "content": "工作日在系统提交；连续三天以上年假须至少提前七个工作日申请。\n申请先由直属负责人确认工作交接，再由人力资源部核对可用假期。\n 紧急情况无法提前申请时，员工应在当日上班后两小时内通知直属负责人，并在恢复工作后的一个\n工作日内补交申请。补交只完善记录，不自动改变审批结果。",
+          "score": 0.771898
+        },
+        {
+          "rank": 2,
+          "chunk_id": 78,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 1,
+          "chunk_index": 2,
+          "content": ":00，午间休息时间为 12:00 至 13:00。弹\n性签到窗口为 08:30 至 09:30，员工应在完成签到后保证当日工作时长。\n 超过 09:30 且没有已批准请假、出差或外勤记录的，记为迟到。单月累计三次迟到时，直属负责人\n应与员工完成一次考勤提醒并记录改进措施。\n三、年假申请\n 一天以内的年假应至少提前三个工作日在系统提交；连续三天以上年假须至少提前七个工作日申请。\n申请先由直属负责人",
+          "score": 0.690951
+        },
+        {
+          "rank": 3,
+          "chunk_id": 80,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 2,
+          "chunk_index": 4,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 2 页\n第二章 病假、出差与异常处理\n四、病假与材料\n 病假可以先通过系统提交说明。病假超过一个工作日须提交医疗机构证明，证明应在返岗后的两个\n工作日内补充；员工不得在演示系统中上传包含真实身份信息的材料。\n 人力资源部只核对请假日期、证明类型和审批状态。本演示制度不记录诊断详情，也不要求在公开\n演示数据中填写姓名、证件号码或联系方式。\n五、出差",
+          "score": 0.588928
+        },
+        {
+          "rank": 4,
+          "chunk_id": 98,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 1,
+          "chunk_index": 1,
+          "content": "部访客须至少提前一个工作日登记，由接待部门填写来访单位\n类别、来访目的、预计时间、人数和接待角色。\n 公开演示数据不填写真实姓名、证件号码、手机号码或车牌。现场演示只展示虚构角色和流程状态。\n二、签到与陪同\n 访客到达后由前台核对预约状态，发放当日访客证，并通知接待角色到场。未预约访客需由接待部\n门负责人确认后才能进入会议区域。\n 访客在办公区内应由接待人员陪同，不得进入标记为受限的机房、档案区或",
+          "score": 0.559739
+        },
+        {
+          "rank": 5,
+          "chunk_id": 101,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 2,
+          "chunk_index": 4,
+          "content": "政\n部可以暂停该组织者一周的提前预订权限。\n五、外部访客会议\n 接待外部访客时须同时完成访客登记和会议室预订，会议室预订本身不能替代访客预约。接待角色\n负责在预约时间到前台迎接。\n 含未公开资料的会议结束后，组织者应带走纸质材料并清理白板。公开演示不得展示任何真实客户\n名称、项目代号或合同内容。\n六、使用结束\n 使用者应按预订结束时间离场，关闭显示设备并恢复桌椅。发现设备故障时，在会议室状态中提交",
+          "score": 0.537646
+        }
+      ],
+      "retrieval_by_top_k": {
+        "1": {
+          "top_k": 1,
+          "expected_evidence_count": 2,
+          "matched_evidence_count": 2,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        },
+        "3": {
+          "top_k": 3,
+          "expected_evidence_count": 2,
+          "matched_evidence_count": 2,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        },
+        "5": {
+          "top_k": 5,
+          "expected_evidence_count": 2,
+          "matched_evidence_count": 2,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        }
+      },
+      "threshold_outcomes": [
+        {
+          "top_k": 1,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "id": "direct-sick-leave-01",
+      "category": "direct_fact",
+      "question": "病假超过一个工作日需要补充什么材料，最晚何时补充？",
+      "answerable": true,
+      "expected_refusal": false,
+      "status": "completed",
+      "error_type": null,
+      "latency_ms_samples": [
+        13.0628,
+        15.3857
+      ],
+      "retrieval_stable_across_repetitions": true,
+      "retrieved_sources": [
+        {
+          "rank": 1,
+          "chunk_id": 80,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 2,
+          "chunk_index": 4,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 2 页\n第二章 病假、出差与异常处理\n四、病假与材料\n 病假可以先通过系统提交说明。病假超过一个工作日须提交医疗机构证明，证明应在返岗后的两个\n工作日内补充；员工不得在演示系统中上传包含真实身份信息的材料。\n 人力资源部只核对请假日期、证明类型和审批状态。本演示制度不记录诊断详情，也不要求在公开\n演示数据中填写姓名、证件号码或联系方式。\n五、出差",
+          "score": 0.690622
+        },
+        {
+          "rank": 2,
+          "chunk_id": 79,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 1,
+          "chunk_index": 3,
+          "content": "工作日在系统提交；连续三天以上年假须至少提前七个工作日申请。\n申请先由直属负责人确认工作交接，再由人力资源部核对可用假期。\n 紧急情况无法提前申请时，员工应在当日上班后两小时内通知直属负责人，并在恢复工作后的一个\n工作日内补交申请。补交只完善记录，不自动改变审批结果。",
+          "score": 0.648555
+        },
+        {
+          "rank": 3,
+          "chunk_id": 78,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 1,
+          "chunk_index": 2,
+          "content": ":00，午间休息时间为 12:00 至 13:00。弹\n性签到窗口为 08:30 至 09:30，员工应在完成签到后保证当日工作时长。\n 超过 09:30 且没有已批准请假、出差或外勤记录的，记为迟到。单月累计三次迟到时，直属负责人\n应与员工完成一次考勤提醒并记录改进措施。\n三、年假申请\n 一天以内的年假应至少提前三个工作日在系统提交；连续三天以上年假须至少提前七个工作日申请。\n申请先由直属负责人",
+          "score": 0.552619
+        },
+        {
+          "rank": 4,
+          "chunk_id": 86,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "chunk_index": 3,
+          "content": "重复申领餐费补助。\n 确因展会、临时改签或目的地供应紧张导致住宿超标的，员工应保存原因说明，并由部门负责人和\n财务负责人共同审批。",
+          "score": 0.541356
+        },
+        {
+          "rank": 5,
+          "chunk_id": 76,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 1,
+          "chunk_index": 0,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 1 页\n 员工请假与考勤制度\n 星河协作科技有限公司（虚构）｜人力资源部｜版本 DEMO-v1.0｜生效日期 2026-09-01\n本文件全部内容均为项目演示而虚构，不代表任何真实组织的制度。\n第一章 适用范围与日常考勤\n一、适用范围\n 本制度适用于星河协作科技有限公司（虚构）的全体正式员工、试用期员工和经部门确认纳入统一\n考勤的项目人员。外包服",
+          "score": 0.517696
+        }
+      ],
+      "retrieval_by_top_k": {
+        "1": {
+          "top_k": 1,
+          "expected_evidence_count": 1,
+          "matched_evidence_count": 1,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        },
+        "3": {
+          "top_k": 3,
+          "expected_evidence_count": 1,
+          "matched_evidence_count": 1,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        },
+        "5": {
+          "top_k": 5,
+          "expected_evidence_count": 1,
+          "matched_evidence_count": 1,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        }
+      },
+      "threshold_outcomes": [
+        {
+          "top_k": 1,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "isolation-annual-leave-01",
+      "category": "isolation",
+      "question": "一天以内年假和连续三天以上年假的提前申请要求分别是什么？",
+      "answerable": true,
+      "expected_refusal": false,
+      "status": "completed",
+      "error_type": null,
+      "latency_ms_samples": [
+        14.587,
+        13.4548
+      ],
+      "retrieval_stable_across_repetitions": true,
+      "retrieved_sources": [
+        {
+          "rank": 1,
+          "chunk_id": 79,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 1,
+          "chunk_index": 3,
+          "content": "工作日在系统提交；连续三天以上年假须至少提前七个工作日申请。\n申请先由直属负责人确认工作交接，再由人力资源部核对可用假期。\n 紧急情况无法提前申请时，员工应在当日上班后两小时内通知直属负责人，并在恢复工作后的一个\n工作日内补交申请。补交只完善记录，不自动改变审批结果。",
+          "score": 0.734539
+        },
+        {
+          "rank": 2,
+          "chunk_id": 78,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 1,
+          "chunk_index": 2,
+          "content": ":00，午间休息时间为 12:00 至 13:00。弹\n性签到窗口为 08:30 至 09:30，员工应在完成签到后保证当日工作时长。\n 超过 09:30 且没有已批准请假、出差或外勤记录的，记为迟到。单月累计三次迟到时，直属负责人\n应与员工完成一次考勤提醒并记录改进措施。\n三、年假申请\n 一天以内的年假应至少提前三个工作日在系统提交；连续三天以上年假须至少提前七个工作日申请。\n申请先由直属负责人",
+          "score": 0.647277
+        },
+        {
+          "rank": 3,
+          "chunk_id": 80,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 2,
+          "chunk_index": 4,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 2 页\n第二章 病假、出差与异常处理\n四、病假与材料\n 病假可以先通过系统提交说明。病假超过一个工作日须提交医疗机构证明，证明应在返岗后的两个\n工作日内补充；员工不得在演示系统中上传包含真实身份信息的材料。\n 人力资源部只核对请假日期、证明类型和审批状态。本演示制度不记录诊断详情，也不要求在公开\n演示数据中填写姓名、证件号码或联系方式。\n五、出差",
+          "score": 0.582724
+        },
+        {
+          "rank": 4,
+          "chunk_id": 76,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 1,
+          "chunk_index": 0,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 1 页\n 员工请假与考勤制度\n 星河协作科技有限公司（虚构）｜人力资源部｜版本 DEMO-v1.0｜生效日期 2026-09-01\n本文件全部内容均为项目演示而虚构，不代表任何真实组织的制度。\n第一章 适用范围与日常考勤\n一、适用范围\n 本制度适用于星河协作科技有限公司（虚构）的全体正式员工、试用期员工和经部门确认纳入统一\n考勤的项目人员。外包服",
+          "score": 0.53104
+        },
+        {
+          "rank": 5,
+          "chunk_id": 84,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "chunk_index": 1,
+          "content": "请，写明目的、地点、起止日期、预计费用和工作交付。直属\n负责人批准业务必要性后，由财务部检查预算科目。\n 未经批准自行发生的费用原则上不予报销。紧急出差应在出发前取得直属负责人书面确认，并在返\n程后两个工作日内补齐系统申请。\n二、住宿与交通标准\n 境内差旅按城市类别控制住宿预算：一线城市住宿上限为每晚六百元，其他城市住宿上限为每晚四\n百五十元。金额均为虚构的含税上限，不代表任何真实企业标准。\n 员",
+          "score": 0.529291
+        }
+      ],
+      "retrieval_by_top_k": {
+        "1": {
+          "top_k": 1,
+          "expected_evidence_count": 2,
+          "matched_evidence_count": 1,
+          "recall": 0.5,
+          "reciprocal_rank": 1.0
+        },
+        "3": {
+          "top_k": 3,
+          "expected_evidence_count": 2,
+          "matched_evidence_count": 2,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        },
+        "5": {
+          "top_k": 5,
+          "expected_evidence_count": 2,
+          "matched_evidence_count": 2,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        }
+      },
+      "threshold_outcomes": [
+        {
+          "top_k": 1,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cross-trip-01",
+      "category": "cross_document",
+      "question": "员工因公出差时，从出发前到返程后，为了考勤和报销需要完成哪些关键步骤？",
+      "answerable": true,
+      "expected_refusal": false,
+      "status": "completed",
+      "error_type": null,
+      "latency_ms_samples": [
+        14.5399,
+        12.1818
+      ],
+      "retrieval_stable_across_repetitions": true,
+      "retrieved_sources": [
+        {
+          "rank": 1,
+          "chunk_id": 81,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 2,
+          "chunk_index": 5,
+          "content": "记录诊断详情，也不要求在公开\n演示数据中填写姓名、证件号码或联系方式。\n五、出差期间的考勤\n 员工应在出发前完成差旅申请。审批完成的出差日期按正常出勤登记，出差期间无需重复提交外勤\n签到，但每日工作安排仍由直属负责人确认。\n 出差交通、住宿、餐费标准和返程后的报销期限不在本文件定义，统一以《差旅与费用报销制度》\n为准。未完成差旅审批的行程不能仅凭考勤记录获得费用报销。\n六、异常更正\n 漏签员工应在",
+          "score": 0.717215
+        },
+        {
+          "rank": 2,
+          "chunk_id": 82,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 2,
+          "chunk_index": 6,
+          "content": "未完成差旅审批的行程不能仅凭考勤记录获得费用报销。\n六、异常更正\n 漏签员工应在两个工作日内提交更正，说明日期、时段和原因，由直属负责人确认。每月最后一个\n工作日之后提交的更正进入下一考勤周期复核。\n 考勤系统不可用时，人力资源部发布统一通知并保留替代记录；员工不应通过共享账号、代签或伪\n造截图完成考勤。",
+          "score": 0.70431
+        },
+        {
+          "rank": 3,
+          "chunk_id": 87,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 2,
+          "chunk_index": 4,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 2 页\n第二章 报销、复核与采购付款衔接\n四、报销材料与期限\n 员工应在返程后十个工作日内提交报销，材料包括已批准的差旅申请、费用明细和合法有效的发票。\n电子发票应避免重复报销，并保留可核验的原始文件。\n 缺少必要凭证时，员工应提交情况说明并取得部门负责人确认；情况说明不能替代税务规定要求的\n票据，也不能用于报销个人消费。\n五、复核与支付\n 财务",
+          "score": 0.619387
+        },
+        {
+          "rank": 4,
+          "chunk_id": 84,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "chunk_index": 1,
+          "content": "请，写明目的、地点、起止日期、预计费用和工作交付。直属\n负责人批准业务必要性后，由财务部检查预算科目。\n 未经批准自行发生的费用原则上不予报销。紧急出差应在出发前取得直属负责人书面确认，并在返\n程后两个工作日内补齐系统申请。\n二、住宿与交通标准\n 境内差旅按城市类别控制住宿预算：一线城市住宿上限为每晚六百元，其他城市住宿上限为每晚四\n百五十元。金额均为虚构的含税上限，不代表任何真实企业标准。\n 员",
+          "score": 0.589833
+        },
+        {
+          "rank": 5,
+          "chunk_id": 96,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 2,
+          "chunk_index": 6,
+          "content": "组在验收通过后汇总审批记录、报价记录、验收记录和发票，交财务部进行付款复核。付款时\n限和凭证合法性要求以《差旅与费用报销制度》的采购付款条款为准。\n 申请人、验收人和付款复核人承担不同职责；任何单一角色都不能独立完成从申请到付款的全部环\n节。",
+          "score": 0.576302
+        }
+      ],
+      "retrieval_by_top_k": {
+        "1": {
+          "top_k": 1,
+          "expected_evidence_count": 3,
+          "matched_evidence_count": 1,
+          "recall": 0.333333,
+          "reciprocal_rank": 1.0
+        },
+        "3": {
+          "top_k": 3,
+          "expected_evidence_count": 3,
+          "matched_evidence_count": 2,
+          "recall": 0.666667,
+          "reciprocal_rank": 1.0
+        },
+        "5": {
+          "top_k": 5,
+          "expected_evidence_count": 3,
+          "matched_evidence_count": 2,
+          "recall": 0.666667,
+          "reciprocal_rank": 1.0
+        }
+      },
+      "threshold_outcomes": [
+        {
+          "top_k": 1,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "id": "direct-hotel-01",
+      "category": "direct_fact",
+      "question": "境内出差时，一线城市和其他城市的住宿上限分别是多少？",
+      "answerable": true,
+      "expected_refusal": false,
+      "status": "completed",
+      "error_type": null,
+      "latency_ms_samples": [
+        13.1324,
+        12.7274
+      ],
+      "retrieval_stable_across_repetitions": true,
+      "retrieved_sources": [
+        {
+          "rank": 1,
+          "chunk_id": 84,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "chunk_index": 1,
+          "content": "请，写明目的、地点、起止日期、预计费用和工作交付。直属\n负责人批准业务必要性后，由财务部检查预算科目。\n 未经批准自行发生的费用原则上不予报销。紧急出差应在出发前取得直属负责人书面确认，并在返\n程后两个工作日内补齐系统申请。\n二、住宿与交通标准\n 境内差旅按城市类别控制住宿预算：一线城市住宿上限为每晚六百元，其他城市住宿上限为每晚四\n百五十元。金额均为虚构的含税上限，不代表任何真实企业标准。\n 员",
+          "score": 0.638058
+        },
+        {
+          "rank": 2,
+          "chunk_id": 85,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "chunk_index": 2,
+          "content": "宿上限为每晚四\n百五十元。金额均为虚构的含税上限，不代表任何真实企业标准。\n 员工优先选择公共交通和经济合理的出行方案。市内交通补助上限为每日八十元，超出部分需要在\n费用发生前取得部门负责人的补充批准。\n三、餐费与超标处理\n 出差餐费补助上限为每日一百元，由出差起止日期按自然日计算。由会议主办方统一提供餐食的时\n段，不重复申领餐费补助。\n 确因展会、临时改签或目的地供应紧张导致住宿超标的，员工应保",
+          "score": 0.59239
+        },
+        {
+          "rank": 3,
+          "chunk_id": 81,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 2,
+          "chunk_index": 5,
+          "content": "记录诊断详情，也不要求在公开\n演示数据中填写姓名、证件号码或联系方式。\n五、出差期间的考勤\n 员工应在出发前完成差旅申请。审批完成的出差日期按正常出勤登记，出差期间无需重复提交外勤\n签到，但每日工作安排仍由直属负责人确认。\n 出差交通、住宿、餐费标准和返程后的报销期限不在本文件定义，统一以《差旅与费用报销制度》\n为准。未完成差旅审批的行程不能仅凭考勤记录获得费用报销。\n六、异常更正\n 漏签员工应在",
+          "score": 0.51962
+        },
+        {
+          "rank": 4,
+          "chunk_id": 83,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "chunk_index": 0,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 1 页\n 差旅与费用报销制度\n 星河协作科技有限公司（虚构）｜财务部｜版本 DEMO-v1.0｜生效日期 2026-09-01\n本文件全部内容均为项目演示而虚构，不代表任何真实组织的制度。\n第一章 差旅申请与费用标准\n一、出发前申请\n 员工因公出差应在出发前提交差旅申请，写明目的、地点、起止日期、预计费用和工作交付。直属\n负责人批准业务必要性后，",
+          "score": 0.501329
+        },
+        {
+          "rank": 5,
+          "chunk_id": 86,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "chunk_index": 3,
+          "content": "重复申领餐费补助。\n 确因展会、临时改签或目的地供应紧张导致住宿超标的，员工应保存原因说明，并由部门负责人和\n财务负责人共同审批。",
+          "score": 0.464555
+        }
+      ],
+      "retrieval_by_top_k": {
+        "1": {
+          "top_k": 1,
+          "expected_evidence_count": 1,
+          "matched_evidence_count": 1,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        },
+        "3": {
+          "top_k": 3,
+          "expected_evidence_count": 1,
+          "matched_evidence_count": 1,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        },
+        "5": {
+          "top_k": 5,
+          "expected_evidence_count": 1,
+          "matched_evidence_count": 1,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        }
+      },
+      "threshold_outcomes": [
+        {
+          "top_k": 1,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": false,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": false,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": false,
+          "kept_source_ranks": []
+        }
+      ]
+    },
+    {
+      "id": "isolation-travel-allowance-01",
+      "category": "isolation",
+      "question": "市内交通补助和出差餐费补助的每日上限分别是多少？",
+      "answerable": true,
+      "expected_refusal": false,
+      "status": "completed",
+      "error_type": null,
+      "latency_ms_samples": [
+        12.9702,
+        12.0197
+      ],
+      "retrieval_stable_across_repetitions": true,
+      "retrieved_sources": [
+        {
+          "rank": 1,
+          "chunk_id": 85,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "chunk_index": 2,
+          "content": "宿上限为每晚四\n百五十元。金额均为虚构的含税上限，不代表任何真实企业标准。\n 员工优先选择公共交通和经济合理的出行方案。市内交通补助上限为每日八十元，超出部分需要在\n费用发生前取得部门负责人的补充批准。\n三、餐费与超标处理\n 出差餐费补助上限为每日一百元，由出差起止日期按自然日计算。由会议主办方统一提供餐食的时\n段，不重复申领餐费补助。\n 确因展会、临时改签或目的地供应紧张导致住宿超标的，员工应保",
+          "score": 0.708861
+        },
+        {
+          "rank": 2,
+          "chunk_id": 84,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "chunk_index": 1,
+          "content": "请，写明目的、地点、起止日期、预计费用和工作交付。直属\n负责人批准业务必要性后，由财务部检查预算科目。\n 未经批准自行发生的费用原则上不予报销。紧急出差应在出发前取得直属负责人书面确认，并在返\n程后两个工作日内补齐系统申请。\n二、住宿与交通标准\n 境内差旅按城市类别控制住宿预算：一线城市住宿上限为每晚六百元，其他城市住宿上限为每晚四\n百五十元。金额均为虚构的含税上限，不代表任何真实企业标准。\n 员",
+          "score": 0.632081
+        },
+        {
+          "rank": 3,
+          "chunk_id": 86,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "chunk_index": 3,
+          "content": "重复申领餐费补助。\n 确因展会、临时改签或目的地供应紧张导致住宿超标的，员工应保存原因说明，并由部门负责人和\n财务负责人共同审批。",
+          "score": 0.568197
+        },
+        {
+          "rank": 4,
+          "chunk_id": 83,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "chunk_index": 0,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 1 页\n 差旅与费用报销制度\n 星河协作科技有限公司（虚构）｜财务部｜版本 DEMO-v1.0｜生效日期 2026-09-01\n本文件全部内容均为项目演示而虚构，不代表任何真实组织的制度。\n第一章 差旅申请与费用标准\n一、出发前申请\n 员工因公出差应在出发前提交差旅申请，写明目的、地点、起止日期、预计费用和工作交付。直属\n负责人批准业务必要性后，",
+          "score": 0.558328
+        },
+        {
+          "rank": 5,
+          "chunk_id": 81,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 2,
+          "chunk_index": 5,
+          "content": "记录诊断详情，也不要求在公开\n演示数据中填写姓名、证件号码或联系方式。\n五、出差期间的考勤\n 员工应在出发前完成差旅申请。审批完成的出差日期按正常出勤登记，出差期间无需重复提交外勤\n签到，但每日工作安排仍由直属负责人确认。\n 出差交通、住宿、餐费标准和返程后的报销期限不在本文件定义，统一以《差旅与费用报销制度》\n为准。未完成差旅审批的行程不能仅凭考勤记录获得费用报销。\n六、异常更正\n 漏签员工应在",
+          "score": 0.547132
+        }
+      ],
+      "retrieval_by_top_k": {
+        "1": {
+          "top_k": 1,
+          "expected_evidence_count": 2,
+          "matched_evidence_count": 2,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        },
+        "3": {
+          "top_k": 3,
+          "expected_evidence_count": 2,
+          "matched_evidence_count": 2,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        },
+        "5": {
+          "top_k": 5,
+          "expected_evidence_count": 2,
+          "matched_evidence_count": 2,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        }
+      },
+      "threshold_outcomes": [
+        {
+          "top_k": 1,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "comprehensive-reimbursement-01",
+      "category": "comprehensive",
+      "question": "员工返程后提交报销需要哪些材料，财务复核和付款分别需要多久？",
+      "answerable": true,
+      "expected_refusal": false,
+      "status": "completed",
+      "error_type": null,
+      "latency_ms_samples": [
+        12.9959,
+        12.3588
+      ],
+      "retrieval_stable_across_repetitions": true,
+      "retrieved_sources": [
+        {
+          "rank": 1,
+          "chunk_id": 87,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 2,
+          "chunk_index": 4,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 2 页\n第二章 报销、复核与采购付款衔接\n四、报销材料与期限\n 员工应在返程后十个工作日内提交报销，材料包括已批准的差旅申请、费用明细和合法有效的发票。\n电子发票应避免重复报销，并保留可核验的原始文件。\n 缺少必要凭证时，员工应提交情况说明并取得部门负责人确认；情况说明不能替代税务规定要求的\n票据，也不能用于报销个人消费。\n五、复核与支付\n 财务",
+          "score": 0.783434
+        },
+        {
+          "rank": 2,
+          "chunk_id": 88,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 2,
+          "chunk_index": 5,
+          "content": "明不能替代税务规定要求的\n票据，也不能用于报销个人消费。\n五、复核与支付\n 财务复核在五个工作日内完成，重点检查预算、审批链、费用类别、发票和重复提交情况。材料被\n退回后，复核时限从补齐材料之日重新计算。\n 通过复核的报销在三个工作日内进入付款流程。演示数据只描述流程节点，不包含银行账户、收款\n人身份或任何真实支付信息。\n六、采购付款凭证\n 办公设备采购付款应同时附采购审批记录、供应商报价或比价记",
+          "score": 0.753553
+        },
+        {
+          "rank": 3,
+          "chunk_id": 96,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 2,
+          "chunk_index": 6,
+          "content": "组在验收通过后汇总审批记录、报价记录、验收记录和发票，交财务部进行付款复核。付款时\n限和凭证合法性要求以《差旅与费用报销制度》的采购付款条款为准。\n 申请人、验收人和付款复核人承担不同职责；任何单一角色都不能独立完成从申请到付款的全部环\n节。",
+          "score": 0.70397
+        },
+        {
+          "rank": 4,
+          "chunk_id": 82,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 2,
+          "chunk_index": 6,
+          "content": "未完成差旅审批的行程不能仅凭考勤记录获得费用报销。\n六、异常更正\n 漏签员工应在两个工作日内提交更正，说明日期、时段和原因，由直属负责人确认。每月最后一个\n工作日之后提交的更正进入下一考勤周期复核。\n 考勤系统不可用时，人力资源部发布统一通知并保留替代记录；员工不应通过共享账号、代签或伪\n造截图完成考勤。",
+          "score": 0.646776
+        },
+        {
+          "rank": 5,
+          "chunk_id": 95,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 2,
+          "chunk_index": 5,
+          "content": "记为可领\n用，也不得作为财务付款完成的依据。\n五、资产登记与领用\n 达到固定资产登记标准的设备，由行政部门登记资产编号、所属部门、保管角色和领用日期。公开\n演示数据只使用角色，不记录真实员工姓名。\n 设备调拨、归还和报废都应更新资产状态。普通低值耗材按部门汇总登记，不为每件耗材生成独立\n资产编号。\n六、付款衔接\n 采购组在验收通过后汇总审批记录、报价记录、验收记录和发票，交财务部进行付款复核。付款",
+          "score": 0.642919
+        }
+      ],
+      "retrieval_by_top_k": {
+        "1": {
+          "top_k": 1,
+          "expected_evidence_count": 3,
+          "matched_evidence_count": 1,
+          "recall": 0.333333,
+          "reciprocal_rank": 1.0
+        },
+        "3": {
+          "top_k": 3,
+          "expected_evidence_count": 3,
+          "matched_evidence_count": 3,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        },
+        "5": {
+          "top_k": 5,
+          "expected_evidence_count": 3,
+          "matched_evidence_count": 3,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        }
+      },
+      "threshold_outcomes": [
+        {
+          "top_k": 1,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "id": "comprehensive-procurement-tier-01",
+      "category": "comprehensive",
+      "question": "办公采购在一千元以内、一千元以上至五千元以及超过五千元时，审批和报价要求有什么区别？",
+      "answerable": true,
+      "expected_refusal": false,
+      "status": "completed",
+      "error_type": null,
+      "latency_ms_samples": [
+        14.1546,
+        13.6138
+      ],
+      "retrieval_stable_across_repetitions": true,
+      "retrieved_sources": [
+        {
+          "rank": 1,
+          "chunk_id": 92,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 1,
+          "chunk_index": 2,
+          "content": "采购，需要至少\n两家供应商报价并由部门负责人批准。\n 单次采购金额超过五千元须取得三家供应商报价，并由部门负责人和财务负责人共同确认预算。无\n法取得足够报价时，应书面说明唯一来源或紧急原因。\n三、紧急采购\n 影响办公连续性的紧急采购可以先取得部门负责人和行政负责人的书面确认，随后在两个工作日内\n补齐申请、报价和用途说明。\n 价格优惠、口头承诺或个人垫付不构成跳过审批的理由。涉及长期服务的采购仍需明",
+          "score": 0.770305
+        },
+        {
+          "rank": 2,
+          "chunk_id": 91,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 1,
+          "chunk_index": 1,
+          "content": "务采购应先确认业务用途、数量、预算科目和期望到货日期。申请人不得\n拆分订单规避审批级别，也不得先收货后补普通采购申请。\n 本制度中的金额、供应商和流程均为虚构演示内容。公开数据中不保存真实供应商名称、联系人、\n报价文件或合同编号。\n二、金额分级\n 单次采购金额一千元以内由申请人直属负责人审批；超过一千元且不超过五千元的采购，需要至少\n两家供应商报价并由部门负责人批准。\n 单次采购金额超过五千元须取",
+          "score": 0.703306
+        },
+        {
+          "rank": 3,
+          "chunk_id": 89,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 2,
+          "chunk_index": 6,
+          "content": "。\n六、采购付款凭证\n 办公设备采购付款应同时附采购审批记录、供应商报价或比价记录、到货验收记录和合法发票。缺\n少验收记录时，财务部暂不发起付款。\n 采购金额分级、报价数量和固定资产登记规则由《采购与办公资产管理制度》定义；财务部不以付\n款审核替代采购审批和资产验收。",
+          "score": 0.699877
+        },
+        {
+          "rank": 4,
+          "chunk_id": 90,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 1,
+          "chunk_index": 0,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 1 页\n 采购与办公资产管理制度\n 星河协作科技有限公司（虚构）｜采购组与行政部｜版本 DEMO-v1.0｜生效日期 2026-09-01\n本文件全部内容均为项目演示而虚构，不代表任何真实组织的制度。\n第一章 采购申请与分级审批\n一、采购前提\n 办公用品、设备和通用服务采购应先确认业务用途、数量、预算科目和期望到货日期。申请人不得\n拆分订单规避审",
+          "score": 0.630442
+        },
+        {
+          "rank": 5,
+          "chunk_id": 93,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 1,
+          "chunk_index": 3,
+          "content": "。\n 价格优惠、口头承诺或个人垫付不构成跳过审批的理由。涉及长期服务的采购仍需明确服务范围、\n验收方式和终止条件。",
+          "score": 0.60031
+        }
+      ],
+      "retrieval_by_top_k": {
+        "1": {
+          "top_k": 1,
+          "expected_evidence_count": 3,
+          "matched_evidence_count": 1,
+          "recall": 0.333333,
+          "reciprocal_rank": 1.0
+        },
+        "3": {
+          "top_k": 3,
+          "expected_evidence_count": 3,
+          "matched_evidence_count": 3,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        },
+        "5": {
+          "top_k": 5,
+          "expected_evidence_count": 3,
+          "matched_evidence_count": 3,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        }
+      },
+      "threshold_outcomes": [
+        {
+          "top_k": 1,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cross-procurement-payment-01",
+      "category": "cross_document",
+      "question": "办公设备到货后，要完成资产登记并进入财务付款，需要经过哪些关键动作和凭证？",
+      "answerable": true,
+      "expected_refusal": false,
+      "status": "completed",
+      "error_type": null,
+      "latency_ms_samples": [
+        13.6645,
+        13.1879
+      ],
+      "retrieval_stable_across_repetitions": true,
+      "retrieved_sources": [
+        {
+          "rank": 1,
+          "chunk_id": 89,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 2,
+          "chunk_index": 6,
+          "content": "。\n六、采购付款凭证\n 办公设备采购付款应同时附采购审批记录、供应商报价或比价记录、到货验收记录和合法发票。缺\n少验收记录时，财务部暂不发起付款。\n 采购金额分级、报价数量和固定资产登记规则由《采购与办公资产管理制度》定义；财务部不以付\n款审核替代采购审批和资产验收。",
+          "score": 0.689463
+        },
+        {
+          "rank": 2,
+          "chunk_id": 95,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 2,
+          "chunk_index": 5,
+          "content": "记为可领\n用，也不得作为财务付款完成的依据。\n五、资产登记与领用\n 达到固定资产登记标准的设备，由行政部门登记资产编号、所属部门、保管角色和领用日期。公开\n演示数据只使用角色，不记录真实员工姓名。\n 设备调拨、归还和报废都应更新资产状态。普通低值耗材按部门汇总登记，不为每件耗材生成独立\n资产编号。\n六、付款衔接\n 采购组在验收通过后汇总审批记录、报价记录、验收记录和发票，交财务部进行付款复核。付款",
+          "score": 0.683201
+        },
+        {
+          "rank": 3,
+          "chunk_id": 94,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 2,
+          "chunk_index": 4,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 2 页\n第二章 到货验收、资产登记与付款\n四、到货验收\n 申请人和资产管理员应在到货后两个工作日内完成验收，核对品名、数量、规格、外观和基础功能。\n发现不符时应暂停领用并联系采购组处理。\n 验收记录应注明采购申请、到货日期、验收结论和异常说明。没有通过验收的设备不得标记为可领\n用，也不得作为财务付款完成的依据。\n五、资产登记与领用\n 达到固定资产",
+          "score": 0.673029
+        },
+        {
+          "rank": 4,
+          "chunk_id": 88,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 2,
+          "chunk_index": 5,
+          "content": "明不能替代税务规定要求的\n票据，也不能用于报销个人消费。\n五、复核与支付\n 财务复核在五个工作日内完成，重点检查预算、审批链、费用类别、发票和重复提交情况。材料被\n退回后，复核时限从补齐材料之日重新计算。\n 通过复核的报销在三个工作日内进入付款流程。演示数据只描述流程节点，不包含银行账户、收款\n人身份或任何真实支付信息。\n六、采购付款凭证\n 办公设备采购付款应同时附采购审批记录、供应商报价或比价记",
+          "score": 0.59607
+        },
+        {
+          "rank": 5,
+          "chunk_id": 96,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 2,
+          "chunk_index": 6,
+          "content": "组在验收通过后汇总审批记录、报价记录、验收记录和发票，交财务部进行付款复核。付款时\n限和凭证合法性要求以《差旅与费用报销制度》的采购付款条款为准。\n 申请人、验收人和付款复核人承担不同职责；任何单一角色都不能独立完成从申请到付款的全部环\n节。",
+          "score": 0.559829
+        }
+      ],
+      "retrieval_by_top_k": {
+        "1": {
+          "top_k": 1,
+          "expected_evidence_count": 5,
+          "matched_evidence_count": 2,
+          "recall": 0.4,
+          "reciprocal_rank": 1.0
+        },
+        "3": {
+          "top_k": 3,
+          "expected_evidence_count": 5,
+          "matched_evidence_count": 5,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        },
+        "5": {
+          "top_k": 5,
+          "expected_evidence_count": 5,
+          "matched_evidence_count": 5,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        }
+      },
+      "threshold_outcomes": [
+        {
+          "top_k": 1,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "id": "direct-visitor-01",
+      "category": "direct_fact",
+      "question": "外部访客进入办公区需要提前多久登记，登记哪些信息？",
+      "answerable": true,
+      "expected_refusal": false,
+      "status": "completed",
+      "error_type": null,
+      "latency_ms_samples": [
+        11.7362,
+        11.6658
+      ],
+      "retrieval_stable_across_repetitions": true,
+      "retrieved_sources": [
+        {
+          "rank": 1,
+          "chunk_id": 98,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 1,
+          "chunk_index": 1,
+          "content": "部访客须至少提前一个工作日登记，由接待部门填写来访单位\n类别、来访目的、预计时间、人数和接待角色。\n 公开演示数据不填写真实姓名、证件号码、手机号码或车牌。现场演示只展示虚构角色和流程状态。\n二、签到与陪同\n 访客到达后由前台核对预约状态，发放当日访客证，并通知接待角色到场。未预约访客需由接待部\n门负责人确认后才能进入会议区域。\n 访客在办公区内应由接待人员陪同，不得进入标记为受限的机房、档案区或",
+          "score": 0.710403
+        },
+        {
+          "rank": 2,
+          "chunk_id": 99,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 1,
+          "chunk_index": 2,
+          "content": "会议区域。\n 访客在办公区内应由接待人员陪同，不得进入标记为受限的机房、档案区或设备区，也不得拍摄屏\n幕、白板或未公开文件。\n三、离场与访客证\n 访客离场时应归还访客证，由前台完成离场状态登记。访客证当日十八点三十分自动失效，跨日访\n问必须重新提交预约。\n 遗失访客证时，接待人员应立即通知前台停用该证，并陪同访客完成离场；本演示流程不记录任何\n真实证件信息。",
+          "score": 0.671486
+        },
+        {
+          "rank": 3,
+          "chunk_id": 97,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 1,
+          "chunk_index": 0,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 1 页\n 访客与会议室管理办法\n 星河协作科技有限公司（虚构）｜行政部｜版本 DEMO-v1.0｜生效日期 2026-09-01\n本文件全部内容均为项目演示而虚构，不代表任何真实组织的制度。\n第一章 访客预约与现场管理\n一、预约登记\n 因会议、交付或面试进入办公区的外部访客须至少提前一个工作日登记，由接待部门填写来访单位\n类别、来访目的、预计时间",
+          "score": 0.60839
+        },
+        {
+          "rank": 4,
+          "chunk_id": 101,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 2,
+          "chunk_index": 4,
+          "content": "政\n部可以暂停该组织者一周的提前预订权限。\n五、外部访客会议\n 接待外部访客时须同时完成访客登记和会议室预订，会议室预订本身不能替代访客预约。接待角色\n负责在预约时间到前台迎接。\n 含未公开资料的会议结束后，组织者应带走纸质材料并清理白板。公开演示不得展示任何真实客户\n名称、项目代号或合同内容。\n六、使用结束\n 使用者应按预订结束时间离场，关闭显示设备并恢复桌椅。发现设备故障时，在会议室状态中提交",
+          "score": 0.601845
+        },
+        {
+          "rank": 5,
+          "chunk_id": 78,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 1,
+          "chunk_index": 2,
+          "content": ":00，午间休息时间为 12:00 至 13:00。弹\n性签到窗口为 08:30 至 09:30，员工应在完成签到后保证当日工作时长。\n 超过 09:30 且没有已批准请假、出差或外勤记录的，记为迟到。单月累计三次迟到时，直属负责人\n应与员工完成一次考勤提醒并记录改进措施。\n三、年假申请\n 一天以内的年假应至少提前三个工作日在系统提交；连续三天以上年假须至少提前七个工作日申请。\n申请先由直属负责人",
+          "score": 0.549496
+        }
+      ],
+      "retrieval_by_top_k": {
+        "1": {
+          "top_k": 1,
+          "expected_evidence_count": 2,
+          "matched_evidence_count": 1,
+          "recall": 0.5,
+          "reciprocal_rank": 1.0
+        },
+        "3": {
+          "top_k": 3,
+          "expected_evidence_count": 2,
+          "matched_evidence_count": 2,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        },
+        "5": {
+          "top_k": 5,
+          "expected_evidence_count": 2,
+          "matched_evidence_count": 2,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        }
+      },
+      "threshold_outcomes": [
+        {
+          "top_k": 1,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "id": "isolation-visitor-meeting-01",
+      "category": "isolation",
+      "question": "接待外部访客开会时，只预订会议室是否足够？还需要做什么？",
+      "answerable": true,
+      "expected_refusal": false,
+      "status": "completed",
+      "error_type": null,
+      "latency_ms_samples": [
+        14.4828,
+        11.3554
+      ],
+      "retrieval_stable_across_repetitions": true,
+      "retrieved_sources": [
+        {
+          "rank": 1,
+          "chunk_id": 101,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 2,
+          "chunk_index": 4,
+          "content": "政\n部可以暂停该组织者一周的提前预订权限。\n五、外部访客会议\n 接待外部访客时须同时完成访客登记和会议室预订，会议室预订本身不能替代访客预约。接待角色\n负责在预约时间到前台迎接。\n 含未公开资料的会议结束后，组织者应带走纸质材料并清理白板。公开演示不得展示任何真实客户\n名称、项目代号或合同内容。\n六、使用结束\n 使用者应按预订结束时间离场，关闭显示设备并恢复桌椅。发现设备故障时，在会议室状态中提交",
+          "score": 0.682725
+        },
+        {
+          "rank": 2,
+          "chunk_id": 100,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 2,
+          "chunk_index": 3,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 2 页\n第二章 会议室预订与使用\n四、预订规则\n 会议组织者应选择满足人数和设备需求的会议室，填写主题、开始时间、结束时间和组织角色。同\n一组织者不得为同一时段重复占用多个会议室。\n 计划取消或改为线上会议时，应在会议开始前两小时取消预订。连续两次未使用且未取消的，行政\n部可以暂停该组织者一周的提前预订权限。\n五、外部访客会议\n 接待外部访客时须",
+          "score": 0.663818
+        },
+        {
+          "rank": 3,
+          "chunk_id": 98,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 1,
+          "chunk_index": 1,
+          "content": "部访客须至少提前一个工作日登记，由接待部门填写来访单位\n类别、来访目的、预计时间、人数和接待角色。\n 公开演示数据不填写真实姓名、证件号码、手机号码或车牌。现场演示只展示虚构角色和流程状态。\n二、签到与陪同\n 访客到达后由前台核对预约状态，发放当日访客证，并通知接待角色到场。未预约访客需由接待部\n门负责人确认后才能进入会议区域。\n 访客在办公区内应由接待人员陪同，不得进入标记为受限的机房、档案区或",
+          "score": 0.636869
+        },
+        {
+          "rank": 4,
+          "chunk_id": 102,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 2,
+          "chunk_index": 5,
+          "content": "应按预订结束时间离场，关闭显示设备并恢复桌椅。发现设备故障时，在会议室状态中提交\n故障类型，由行政部安排处理。\n 会议室容量、访客人数和设备需求不匹配时，应更换会议室，不得通过取消访客登记来绕过现场管\n理要求。",
+          "score": 0.609572
+        },
+        {
+          "rank": 5,
+          "chunk_id": 99,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 1,
+          "chunk_index": 2,
+          "content": "会议区域。\n 访客在办公区内应由接待人员陪同，不得进入标记为受限的机房、档案区或设备区，也不得拍摄屏\n幕、白板或未公开文件。\n三、离场与访客证\n 访客离场时应归还访客证，由前台完成离场状态登记。访客证当日十八点三十分自动失效，跨日访\n问必须重新提交预约。\n 遗失访客证时，接待人员应立即通知前台停用该证，并陪同访客完成离场；本演示流程不记录任何\n真实证件信息。",
+          "score": 0.60482
+        }
+      ],
+      "retrieval_by_top_k": {
+        "1": {
+          "top_k": 1,
+          "expected_evidence_count": 2,
+          "matched_evidence_count": 2,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        },
+        "3": {
+          "top_k": 3,
+          "expected_evidence_count": 2,
+          "matched_evidence_count": 2,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        },
+        "5": {
+          "top_k": 5,
+          "expected_evidence_count": 2,
+          "matched_evidence_count": 2,
+          "recall": 1.0,
+          "reciprocal_rank": 1.0
+        }
+      },
+      "threshold_outcomes": [
+        {
+          "top_k": 1,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "id": "comprehensive-meeting-01",
+      "category": "comprehensive",
+      "question": "会议取消时应提前多久释放会议室，连续两次未使用且未取消会有什么后果？",
+      "answerable": true,
+      "expected_refusal": false,
+      "status": "completed",
+      "error_type": null,
+      "latency_ms_samples": [
+        13.5182,
+        13.0483
+      ],
+      "retrieval_stable_across_repetitions": true,
+      "retrieved_sources": [
+        {
+          "rank": 1,
+          "chunk_id": 102,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 2,
+          "chunk_index": 5,
+          "content": "应按预订结束时间离场，关闭显示设备并恢复桌椅。发现设备故障时，在会议室状态中提交\n故障类型，由行政部安排处理。\n 会议室容量、访客人数和设备需求不匹配时，应更换会议室，不得通过取消访客登记来绕过现场管\n理要求。",
+          "score": 0.656343
+        },
+        {
+          "rank": 2,
+          "chunk_id": 100,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 2,
+          "chunk_index": 3,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 2 页\n第二章 会议室预订与使用\n四、预订规则\n 会议组织者应选择满足人数和设备需求的会议室，填写主题、开始时间、结束时间和组织角色。同\n一组织者不得为同一时段重复占用多个会议室。\n 计划取消或改为线上会议时，应在会议开始前两小时取消预订。连续两次未使用且未取消的，行政\n部可以暂停该组织者一周的提前预订权限。\n五、外部访客会议\n 接待外部访客时须",
+          "score": 0.643891
+        },
+        {
+          "rank": 3,
+          "chunk_id": 101,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 2,
+          "chunk_index": 4,
+          "content": "政\n部可以暂停该组织者一周的提前预订权限。\n五、外部访客会议\n 接待外部访客时须同时完成访客登记和会议室预订，会议室预订本身不能替代访客预约。接待角色\n负责在预约时间到前台迎接。\n 含未公开资料的会议结束后，组织者应带走纸质材料并清理白板。公开演示不得展示任何真实客户\n名称、项目代号或合同内容。\n六、使用结束\n 使用者应按预订结束时间离场，关闭显示设备并恢复桌椅。发现设备故障时，在会议室状态中提交",
+          "score": 0.618521
+        },
+        {
+          "rank": 4,
+          "chunk_id": 99,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 1,
+          "chunk_index": 2,
+          "content": "会议区域。\n 访客在办公区内应由接待人员陪同，不得进入标记为受限的机房、档案区或设备区，也不得拍摄屏\n幕、白板或未公开文件。\n三、离场与访客证\n 访客离场时应归还访客证，由前台完成离场状态登记。访客证当日十八点三十分自动失效，跨日访\n问必须重新提交预约。\n 遗失访客证时，接待人员应立即通知前台停用该证，并陪同访客完成离场；本演示流程不记录任何\n真实证件信息。",
+          "score": 0.519798
+        },
+        {
+          "rank": 5,
+          "chunk_id": 98,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 1,
+          "chunk_index": 1,
+          "content": "部访客须至少提前一个工作日登记，由接待部门填写来访单位\n类别、来访目的、预计时间、人数和接待角色。\n 公开演示数据不填写真实姓名、证件号码、手机号码或车牌。现场演示只展示虚构角色和流程状态。\n二、签到与陪同\n 访客到达后由前台核对预约状态，发放当日访客证，并通知接待角色到场。未预约访客需由接待部\n门负责人确认后才能进入会议区域。\n 访客在办公区内应由接待人员陪同，不得进入标记为受限的机房、档案区或",
+          "score": 0.490665
+        }
+      ],
+      "retrieval_by_top_k": {
+        "1": {
+          "top_k": 1,
+          "expected_evidence_count": 2,
+          "matched_evidence_count": 0,
+          "recall": 0.0,
+          "reciprocal_rank": 0.0
+        },
+        "3": {
+          "top_k": 3,
+          "expected_evidence_count": 2,
+          "matched_evidence_count": 2,
+          "recall": 1.0,
+          "reciprocal_rank": 0.5
+        },
+        "5": {
+          "top_k": 5,
+          "expected_evidence_count": 2,
+          "matched_evidence_count": 2,
+          "recall": 1.0,
+          "reciprocal_rank": 0.5
+        }
+      },
+      "threshold_outcomes": [
+        {
+          "top_k": 1,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.65,
+          "predicted_refusal": false,
+          "correct": true,
+          "kept_source_ranks": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "unknown-equity-01",
+      "category": "unanswerable",
+      "question": "公司的股票期权归属周期和行权条件是什么？",
+      "answerable": false,
+      "expected_refusal": true,
+      "status": "completed",
+      "error_type": null,
+      "latency_ms_samples": [
+        11.6436,
+        12.3094
+      ],
+      "retrieval_stable_across_repetitions": true,
+      "retrieved_sources": [
+        {
+          "rank": 1,
+          "chunk_id": 90,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 1,
+          "chunk_index": 0,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 1 页\n 采购与办公资产管理制度\n 星河协作科技有限公司（虚构）｜采购组与行政部｜版本 DEMO-v1.0｜生效日期 2026-09-01\n本文件全部内容均为项目演示而虚构，不代表任何真实组织的制度。\n第一章 采购申请与分级审批\n一、采购前提\n 办公用品、设备和通用服务采购应先确认业务用途、数量、预算科目和期望到货日期。申请人不得\n拆分订单规避审",
+          "score": 0.412108
+        },
+        {
+          "rank": 2,
+          "chunk_id": 87,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 2,
+          "chunk_index": 4,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 2 页\n第二章 报销、复核与采购付款衔接\n四、报销材料与期限\n 员工应在返程后十个工作日内提交报销，材料包括已批准的差旅申请、费用明细和合法有效的发票。\n电子发票应避免重复报销，并保留可核验的原始文件。\n 缺少必要凭证时，员工应提交情况说明并取得部门负责人确认；情况说明不能替代税务规定要求的\n票据，也不能用于报销个人消费。\n五、复核与支付\n 财务",
+          "score": 0.408887
+        },
+        {
+          "rank": 3,
+          "chunk_id": 96,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 2,
+          "chunk_index": 6,
+          "content": "组在验收通过后汇总审批记录、报价记录、验收记录和发票，交财务部进行付款复核。付款时\n限和凭证合法性要求以《差旅与费用报销制度》的采购付款条款为准。\n 申请人、验收人和付款复核人承担不同职责；任何单一角色都不能独立完成从申请到付款的全部环\n节。",
+          "score": 0.405271
+        },
+        {
+          "rank": 4,
+          "chunk_id": 95,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 2,
+          "chunk_index": 5,
+          "content": "记为可领\n用，也不得作为财务付款完成的依据。\n五、资产登记与领用\n 达到固定资产登记标准的设备，由行政部门登记资产编号、所属部门、保管角色和领用日期。公开\n演示数据只使用角色，不记录真实员工姓名。\n 设备调拨、归还和报废都应更新资产状态。普通低值耗材按部门汇总登记，不为每件耗材生成独立\n资产编号。\n六、付款衔接\n 采购组在验收通过后汇总审批记录、报价记录、验收记录和发票，交财务部进行付款复核。付款",
+          "score": 0.399134
+        },
+        {
+          "rank": 5,
+          "chunk_id": 94,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 2,
+          "chunk_index": 4,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 2 页\n第二章 到货验收、资产登记与付款\n四、到货验收\n 申请人和资产管理员应在到货后两个工作日内完成验收，核对品名、数量、规格、外观和基础功能。\n发现不符时应暂停领用并联系采购组处理。\n 验收记录应注明采购申请、到货日期、验收结论和异常说明。没有通过验收的设备不得标记为可领\n用，也不得作为财务付款完成的依据。\n五、资产登记与领用\n 达到固定资产",
+          "score": 0.391364
+        }
+      ],
+      "retrieval_by_top_k": {
+        "1": {
+          "top_k": 1,
+          "expected_evidence_count": 0,
+          "matched_evidence_count": 0,
+          "recall": null,
+          "reciprocal_rank": null
+        },
+        "3": {
+          "top_k": 3,
+          "expected_evidence_count": 0,
+          "matched_evidence_count": 0,
+          "recall": null,
+          "reciprocal_rank": null
+        },
+        "5": {
+          "top_k": 5,
+          "expected_evidence_count": 0,
+          "matched_evidence_count": 0,
+          "recall": null,
+          "reciprocal_rank": null
+        }
+      },
+      "threshold_outcomes": [
+        {
+          "top_k": 1,
+          "threshold": 0.45,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.55,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.45,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.55,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.45,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.55,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        }
+      ]
+    },
+    {
+      "id": "unknown-overseas-visa-01",
+      "category": "unanswerable",
+      "question": "员工去海外出差时，公司如何办理签证？",
+      "answerable": false,
+      "expected_refusal": true,
+      "status": "completed",
+      "error_type": null,
+      "latency_ms_samples": [
+        13.7777,
+        11.7921
+      ],
+      "retrieval_stable_across_repetitions": true,
+      "retrieved_sources": [
+        {
+          "rank": 1,
+          "chunk_id": 81,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 2,
+          "chunk_index": 5,
+          "content": "记录诊断详情，也不要求在公开\n演示数据中填写姓名、证件号码或联系方式。\n五、出差期间的考勤\n 员工应在出发前完成差旅申请。审批完成的出差日期按正常出勤登记，出差期间无需重复提交外勤\n签到，但每日工作安排仍由直属负责人确认。\n 出差交通、住宿、餐费标准和返程后的报销期限不在本文件定义，统一以《差旅与费用报销制度》\n为准。未完成差旅审批的行程不能仅凭考勤记录获得费用报销。\n六、异常更正\n 漏签员工应在",
+          "score": 0.574366
+        },
+        {
+          "rank": 2,
+          "chunk_id": 78,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 1,
+          "chunk_index": 2,
+          "content": ":00，午间休息时间为 12:00 至 13:00。弹\n性签到窗口为 08:30 至 09:30，员工应在完成签到后保证当日工作时长。\n 超过 09:30 且没有已批准请假、出差或外勤记录的，记为迟到。单月累计三次迟到时，直属负责人\n应与员工完成一次考勤提醒并记录改进措施。\n三、年假申请\n 一天以内的年假应至少提前三个工作日在系统提交；连续三天以上年假须至少提前七个工作日申请。\n申请先由直属负责人",
+          "score": 0.565563
+        },
+        {
+          "rank": 3,
+          "chunk_id": 82,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 2,
+          "chunk_index": 6,
+          "content": "未完成差旅审批的行程不能仅凭考勤记录获得费用报销。\n六、异常更正\n 漏签员工应在两个工作日内提交更正，说明日期、时段和原因，由直属负责人确认。每月最后一个\n工作日之后提交的更正进入下一考勤周期复核。\n 考勤系统不可用时，人力资源部发布统一通知并保留替代记录；员工不应通过共享账号、代签或伪\n造截图完成考勤。",
+          "score": 0.548456
+        },
+        {
+          "rank": 4,
+          "chunk_id": 99,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 1,
+          "chunk_index": 2,
+          "content": "会议区域。\n 访客在办公区内应由接待人员陪同，不得进入标记为受限的机房、档案区或设备区，也不得拍摄屏\n幕、白板或未公开文件。\n三、离场与访客证\n 访客离场时应归还访客证，由前台完成离场状态登记。访客证当日十八点三十分自动失效，跨日访\n问必须重新提交预约。\n 遗失访客证时，接待人员应立即通知前台停用该证，并陪同访客完成离场；本演示流程不记录任何\n真实证件信息。",
+          "score": 0.520577
+        },
+        {
+          "rank": 5,
+          "chunk_id": 86,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "chunk_index": 3,
+          "content": "重复申领餐费补助。\n 确因展会、临时改签或目的地供应紧张导致住宿超标的，员工应保存原因说明，并由部门负责人和\n财务负责人共同审批。",
+          "score": 0.51456
+        }
+      ],
+      "retrieval_by_top_k": {
+        "1": {
+          "top_k": 1,
+          "expected_evidence_count": 0,
+          "matched_evidence_count": 0,
+          "recall": null,
+          "reciprocal_rank": null
+        },
+        "3": {
+          "top_k": 3,
+          "expected_evidence_count": 0,
+          "matched_evidence_count": 0,
+          "recall": null,
+          "reciprocal_rank": null
+        },
+        "5": {
+          "top_k": 5,
+          "expected_evidence_count": 0,
+          "matched_evidence_count": 0,
+          "recall": null,
+          "reciprocal_rank": null
+        }
+      },
+      "threshold_outcomes": [
+        {
+          "top_k": 1,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": false,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": false,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": false,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": false,
+          "kept_source_ranks": [
+            1,
+            2
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": false,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": false,
+          "kept_source_ranks": [
+            1,
+            2
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        }
+      ]
+    },
+    {
+      "id": "unknown-overseas-allowance-01",
+      "category": "unanswerable",
+      "question": "海外出差的境外住宿和每日补贴标准是多少？",
+      "answerable": false,
+      "expected_refusal": true,
+      "status": "completed",
+      "error_type": null,
+      "latency_ms_samples": [
+        12.7577,
+        11.9776
+      ],
+      "retrieval_stable_across_repetitions": true,
+      "retrieved_sources": [
+        {
+          "rank": 1,
+          "chunk_id": 84,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "chunk_index": 1,
+          "content": "请，写明目的、地点、起止日期、预计费用和工作交付。直属\n负责人批准业务必要性后，由财务部检查预算科目。\n 未经批准自行发生的费用原则上不予报销。紧急出差应在出发前取得直属负责人书面确认，并在返\n程后两个工作日内补齐系统申请。\n二、住宿与交通标准\n 境内差旅按城市类别控制住宿预算：一线城市住宿上限为每晚六百元，其他城市住宿上限为每晚四\n百五十元。金额均为虚构的含税上限，不代表任何真实企业标准。\n 员",
+          "score": 0.610964
+        },
+        {
+          "rank": 2,
+          "chunk_id": 85,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "chunk_index": 2,
+          "content": "宿上限为每晚四\n百五十元。金额均为虚构的含税上限，不代表任何真实企业标准。\n 员工优先选择公共交通和经济合理的出行方案。市内交通补助上限为每日八十元，超出部分需要在\n费用发生前取得部门负责人的补充批准。\n三、餐费与超标处理\n 出差餐费补助上限为每日一百元，由出差起止日期按自然日计算。由会议主办方统一提供餐食的时\n段，不重复申领餐费补助。\n 确因展会、临时改签或目的地供应紧张导致住宿超标的，员工应保",
+          "score": 0.57092
+        },
+        {
+          "rank": 3,
+          "chunk_id": 81,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 2,
+          "chunk_index": 5,
+          "content": "记录诊断详情，也不要求在公开\n演示数据中填写姓名、证件号码或联系方式。\n五、出差期间的考勤\n 员工应在出发前完成差旅申请。审批完成的出差日期按正常出勤登记，出差期间无需重复提交外勤\n签到，但每日工作安排仍由直属负责人确认。\n 出差交通、住宿、餐费标准和返程后的报销期限不在本文件定义，统一以《差旅与费用报销制度》\n为准。未完成差旅审批的行程不能仅凭考勤记录获得费用报销。\n六、异常更正\n 漏签员工应在",
+          "score": 0.51756
+        },
+        {
+          "rank": 4,
+          "chunk_id": 86,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "chunk_index": 3,
+          "content": "重复申领餐费补助。\n 确因展会、临时改签或目的地供应紧张导致住宿超标的，员工应保存原因说明，并由部门负责人和\n财务负责人共同审批。",
+          "score": 0.499198
+        },
+        {
+          "rank": 5,
+          "chunk_id": 83,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 1,
+          "chunk_index": 0,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 1 页\n 差旅与费用报销制度\n 星河协作科技有限公司（虚构）｜财务部｜版本 DEMO-v1.0｜生效日期 2026-09-01\n本文件全部内容均为项目演示而虚构，不代表任何真实组织的制度。\n第一章 差旅申请与费用标准\n一、出发前申请\n 员工因公出差应在出发前提交差旅申请，写明目的、地点、起止日期、预计费用和工作交付。直属\n负责人批准业务必要性后，",
+          "score": 0.488241
+        }
+      ],
+      "retrieval_by_top_k": {
+        "1": {
+          "top_k": 1,
+          "expected_evidence_count": 0,
+          "matched_evidence_count": 0,
+          "recall": null,
+          "reciprocal_rank": null
+        },
+        "3": {
+          "top_k": 3,
+          "expected_evidence_count": 0,
+          "matched_evidence_count": 0,
+          "recall": null,
+          "reciprocal_rank": null
+        },
+        "5": {
+          "top_k": 5,
+          "expected_evidence_count": 0,
+          "matched_evidence_count": 0,
+          "recall": null,
+          "reciprocal_rank": null
+        }
+      },
+      "threshold_outcomes": [
+        {
+          "top_k": 1,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": false,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": false,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": false,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": false,
+          "kept_source_ranks": [
+            1,
+            2
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": false,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.55,
+          "predicted_refusal": false,
+          "correct": false,
+          "kept_source_ranks": [
+            1,
+            2
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        }
+      ]
+    },
+    {
+      "id": "unknown-vpn-01",
+      "category": "unanswerable",
+      "question": "员工申请 VPN 远程接入需要经过哪些信息安全审批？",
+      "answerable": false,
+      "expected_refusal": true,
+      "status": "completed",
+      "error_type": null,
+      "latency_ms_samples": [
+        13.1113,
+        12.2641
+      ],
+      "retrieval_stable_across_repetitions": true,
+      "retrieved_sources": [
+        {
+          "rank": 1,
+          "chunk_id": 97,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 1,
+          "chunk_index": 0,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 1 页\n 访客与会议室管理办法\n 星河协作科技有限公司（虚构）｜行政部｜版本 DEMO-v1.0｜生效日期 2026-09-01\n本文件全部内容均为项目演示而虚构，不代表任何真实组织的制度。\n第一章 访客预约与现场管理\n一、预约登记\n 因会议、交付或面试进入办公区的外部访客须至少提前一个工作日登记，由接待部门填写来访单位\n类别、来访目的、预计时间",
+          "score": 0.516456
+        },
+        {
+          "rank": 2,
+          "chunk_id": 87,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 2,
+          "chunk_index": 4,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 2 页\n第二章 报销、复核与采购付款衔接\n四、报销材料与期限\n 员工应在返程后十个工作日内提交报销，材料包括已批准的差旅申请、费用明细和合法有效的发票。\n电子发票应避免重复报销，并保留可核验的原始文件。\n 缺少必要凭证时，员工应提交情况说明并取得部门负责人确认；情况说明不能替代税务规定要求的\n票据，也不能用于报销个人消费。\n五、复核与支付\n 财务",
+          "score": 0.515689
+        },
+        {
+          "rank": 3,
+          "chunk_id": 98,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 1,
+          "chunk_index": 1,
+          "content": "部访客须至少提前一个工作日登记，由接待部门填写来访单位\n类别、来访目的、预计时间、人数和接待角色。\n 公开演示数据不填写真实姓名、证件号码、手机号码或车牌。现场演示只展示虚构角色和流程状态。\n二、签到与陪同\n 访客到达后由前台核对预约状态，发放当日访客证，并通知接待角色到场。未预约访客需由接待部\n门负责人确认后才能进入会议区域。\n 访客在办公区内应由接待人员陪同，不得进入标记为受限的机房、档案区或",
+          "score": 0.511909
+        },
+        {
+          "rank": 4,
+          "chunk_id": 80,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 2,
+          "chunk_index": 4,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 2 页\n第二章 病假、出差与异常处理\n四、病假与材料\n 病假可以先通过系统提交说明。病假超过一个工作日须提交医疗机构证明，证明应在返岗后的两个\n工作日内补充；员工不得在演示系统中上传包含真实身份信息的材料。\n 人力资源部只核对请假日期、证明类型和审批状态。本演示制度不记录诊断详情，也不要求在公开\n演示数据中填写姓名、证件号码或联系方式。\n五、出差",
+          "score": 0.50461
+        },
+        {
+          "rank": 5,
+          "chunk_id": 99,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 1,
+          "chunk_index": 2,
+          "content": "会议区域。\n 访客在办公区内应由接待人员陪同，不得进入标记为受限的机房、档案区或设备区，也不得拍摄屏\n幕、白板或未公开文件。\n三、离场与访客证\n 访客离场时应归还访客证，由前台完成离场状态登记。访客证当日十八点三十分自动失效，跨日访\n问必须重新提交预约。\n 遗失访客证时，接待人员应立即通知前台停用该证，并陪同访客完成离场；本演示流程不记录任何\n真实证件信息。",
+          "score": 0.493946
+        }
+      ],
+      "retrieval_by_top_k": {
+        "1": {
+          "top_k": 1,
+          "expected_evidence_count": 0,
+          "matched_evidence_count": 0,
+          "recall": null,
+          "reciprocal_rank": null
+        },
+        "3": {
+          "top_k": 3,
+          "expected_evidence_count": 0,
+          "matched_evidence_count": 0,
+          "recall": null,
+          "reciprocal_rank": null
+        },
+        "5": {
+          "top_k": 5,
+          "expected_evidence_count": 0,
+          "matched_evidence_count": 0,
+          "recall": null,
+          "reciprocal_rank": null
+        }
+      },
+      "threshold_outcomes": [
+        {
+          "top_k": 1,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": false,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.55,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": false,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.55,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": false,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.55,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        }
+      ]
+    },
+    {
+      "id": "unknown-contract-refund-01",
+      "category": "unanswerable",
+      "question": "客户要求合同退款时，退款比例和违约赔偿如何计算？",
+      "answerable": false,
+      "expected_refusal": true,
+      "status": "completed",
+      "error_type": null,
+      "latency_ms_samples": [
+        12.3398,
+        10.0604
+      ],
+      "retrieval_stable_across_repetitions": true,
+      "retrieved_sources": [
+        {
+          "rank": 1,
+          "chunk_id": 96,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 2,
+          "chunk_index": 6,
+          "content": "组在验收通过后汇总审批记录、报价记录、验收记录和发票，交财务部进行付款复核。付款时\n限和凭证合法性要求以《差旅与费用报销制度》的采购付款条款为准。\n 申请人、验收人和付款复核人承担不同职责；任何单一角色都不能独立完成从申请到付款的全部环\n节。",
+          "score": 0.507363
+        },
+        {
+          "rank": 2,
+          "chunk_id": 92,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 1,
+          "chunk_index": 2,
+          "content": "采购，需要至少\n两家供应商报价并由部门负责人批准。\n 单次采购金额超过五千元须取得三家供应商报价，并由部门负责人和财务负责人共同确认预算。无\n法取得足够报价时，应书面说明唯一来源或紧急原因。\n三、紧急采购\n 影响办公连续性的紧急采购可以先取得部门负责人和行政负责人的书面确认，随后在两个工作日内\n补齐申请、报价和用途说明。\n 价格优惠、口头承诺或个人垫付不构成跳过审批的理由。涉及长期服务的采购仍需明",
+          "score": 0.506242
+        },
+        {
+          "rank": 3,
+          "chunk_id": 87,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 2,
+          "chunk_index": 4,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 2 页\n第二章 报销、复核与采购付款衔接\n四、报销材料与期限\n 员工应在返程后十个工作日内提交报销，材料包括已批准的差旅申请、费用明细和合法有效的发票。\n电子发票应避免重复报销，并保留可核验的原始文件。\n 缺少必要凭证时，员工应提交情况说明并取得部门负责人确认；情况说明不能替代税务规定要求的\n票据，也不能用于报销个人消费。\n五、复核与支付\n 财务",
+          "score": 0.504971
+        },
+        {
+          "rank": 4,
+          "chunk_id": 88,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 2,
+          "chunk_index": 5,
+          "content": "明不能替代税务规定要求的\n票据，也不能用于报销个人消费。\n五、复核与支付\n 财务复核在五个工作日内完成，重点检查预算、审批链、费用类别、发票和重复提交情况。材料被\n退回后，复核时限从补齐材料之日重新计算。\n 通过复核的报销在三个工作日内进入付款流程。演示数据只描述流程节点，不包含银行账户、收款\n人身份或任何真实支付信息。\n六、采购付款凭证\n 办公设备采购付款应同时附采购审批记录、供应商报价或比价记",
+          "score": 0.498159
+        },
+        {
+          "rank": 5,
+          "chunk_id": 93,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 1,
+          "chunk_index": 3,
+          "content": "。\n 价格优惠、口头承诺或个人垫付不构成跳过审批的理由。涉及长期服务的采购仍需明确服务范围、\n验收方式和终止条件。",
+          "score": 0.485715
+        }
+      ],
+      "retrieval_by_top_k": {
+        "1": {
+          "top_k": 1,
+          "expected_evidence_count": 0,
+          "matched_evidence_count": 0,
+          "recall": null,
+          "reciprocal_rank": null
+        },
+        "3": {
+          "top_k": 3,
+          "expected_evidence_count": 0,
+          "matched_evidence_count": 0,
+          "recall": null,
+          "reciprocal_rank": null
+        },
+        "5": {
+          "top_k": 5,
+          "expected_evidence_count": 0,
+          "matched_evidence_count": 0,
+          "recall": null,
+          "reciprocal_rank": null
+        }
+      },
+      "threshold_outcomes": [
+        {
+          "top_k": 1,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": false,
+          "kept_source_ranks": [
+            1
+          ]
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.55,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": false,
+          "kept_source_ranks": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.55,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.45,
+          "predicted_refusal": false,
+          "correct": false,
+          "kept_source_ranks": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.55,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        }
+      ]
+    },
+    {
+      "id": "unknown-disaster-recovery-01",
+      "category": "unanswerable",
+      "question": "生产事故发生后，系统的灾难恢复 RTO 和 RPO 分别是多少？",
+      "answerable": false,
+      "expected_refusal": true,
+      "status": "completed",
+      "error_type": null,
+      "latency_ms_samples": [
+        15.2546,
+        12.6835
+      ],
+      "retrieval_stable_across_repetitions": true,
+      "retrieved_sources": [
+        {
+          "rank": 1,
+          "chunk_id": 102,
+          "document_id": 23,
+          "knowledge_base_id": 20,
+          "filename": "访客与会议室管理办法.pdf",
+          "page_number": 2,
+          "chunk_index": 5,
+          "content": "应按预订结束时间离场，关闭显示设备并恢复桌椅。发现设备故障时，在会议室状态中提交\n故障类型，由行政部安排处理。\n 会议室容量、访客人数和设备需求不匹配时，应更换会议室，不得通过取消访客登记来绕过现场管\n理要求。",
+          "score": 0.415201
+        },
+        {
+          "rank": 2,
+          "chunk_id": 87,
+          "document_id": 21,
+          "knowledge_base_id": 20,
+          "filename": "差旅与费用报销制度.pdf",
+          "page_number": 2,
+          "chunk_index": 4,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 2 页\n第二章 报销、复核与采购付款衔接\n四、报销材料与期限\n 员工应在返程后十个工作日内提交报销，材料包括已批准的差旅申请、费用明细和合法有效的发票。\n电子发票应避免重复报销，并保留可核验的原始文件。\n 缺少必要凭证时，员工应提交情况说明并取得部门负责人确认；情况说明不能替代税务规定要求的\n票据，也不能用于报销个人消费。\n五、复核与支付\n 财务",
+          "score": 0.405377
+        },
+        {
+          "rank": 3,
+          "chunk_id": 96,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 2,
+          "chunk_index": 6,
+          "content": "组在验收通过后汇总审批记录、报价记录、验收记录和发票，交财务部进行付款复核。付款时\n限和凭证合法性要求以《差旅与费用报销制度》的采购付款条款为准。\n 申请人、验收人和付款复核人承担不同职责；任何单一角色都不能独立完成从申请到付款的全部环\n节。",
+          "score": 0.398759
+        },
+        {
+          "rank": 4,
+          "chunk_id": 80,
+          "document_id": 20,
+          "knowledge_base_id": 20,
+          "filename": "员工请假与考勤制度.pdf",
+          "page_number": 2,
+          "chunk_index": 4,
+          "content": "星河协作科技有限公司（虚构）｜公开演示虚构资料\n第 2 页\n第二章 病假、出差与异常处理\n四、病假与材料\n 病假可以先通过系统提交说明。病假超过一个工作日须提交医疗机构证明，证明应在返岗后的两个\n工作日内补充；员工不得在演示系统中上传包含真实身份信息的材料。\n 人力资源部只核对请假日期、证明类型和审批状态。本演示制度不记录诊断详情，也不要求在公开\n演示数据中填写姓名、证件号码或联系方式。\n五、出差",
+          "score": 0.38429
+        },
+        {
+          "rank": 5,
+          "chunk_id": 95,
+          "document_id": 22,
+          "knowledge_base_id": 20,
+          "filename": "采购与办公资产管理制度.pdf",
+          "page_number": 2,
+          "chunk_index": 5,
+          "content": "记为可领\n用，也不得作为财务付款完成的依据。\n五、资产登记与领用\n 达到固定资产登记标准的设备，由行政部门登记资产编号、所属部门、保管角色和领用日期。公开\n演示数据只使用角色，不记录真实员工姓名。\n 设备调拨、归还和报废都应更新资产状态。普通低值耗材按部门汇总登记，不为每件耗材生成独立\n资产编号。\n六、付款衔接\n 采购组在验收通过后汇总审批记录、报价记录、验收记录和发票，交财务部进行付款复核。付款",
+          "score": 0.378238
+        }
+      ],
+      "retrieval_by_top_k": {
+        "1": {
+          "top_k": 1,
+          "expected_evidence_count": 0,
+          "matched_evidence_count": 0,
+          "recall": null,
+          "reciprocal_rank": null
+        },
+        "3": {
+          "top_k": 3,
+          "expected_evidence_count": 0,
+          "matched_evidence_count": 0,
+          "recall": null,
+          "reciprocal_rank": null
+        },
+        "5": {
+          "top_k": 5,
+          "expected_evidence_count": 0,
+          "matched_evidence_count": 0,
+          "recall": null,
+          "reciprocal_rank": null
+        }
+      },
+      "threshold_outcomes": [
+        {
+          "top_k": 1,
+          "threshold": 0.45,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.55,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 1,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.45,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.55,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 3,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.45,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.55,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        },
+        {
+          "top_k": 5,
+          "threshold": 0.65,
+          "predicted_refusal": true,
+          "correct": true,
+          "kept_source_ranks": []
+        }
+      ]
+    }
+  ]
+}
