@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import get_messages, init_database, save_message
-from app.db import get_db_session
+from app.db import check_database_connection, get_db_session
 from app.models import (
     ChatRequest,
     ChatResponse,
@@ -129,9 +129,20 @@ async def root() -> dict[str, str]:
 
 
 @app.get("/health")
-async def health() -> dict[str, str | bool]:
+async def health(response: Response) -> dict[str, str | bool]:
+    try:
+        database_connected = check_database_connection() == 1
+    except RuntimeError:
+        response.status_code = 503
+        return {
+            "status": "error",
+            "database_connected": False,
+            "llm_configured": llm_service.is_configured(),
+        }
+
     return {
         "status": "ok",
+        "database_connected": database_connected,
         "llm_configured": llm_service.is_configured(),
     }
 

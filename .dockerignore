@@ -3,9 +3,12 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # 密钥和本地配置
 .env
+.env.*
 
 # Git、编辑器和系统文件
 .git/
@@ -15,8 +18,11 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# 当前镜像运行不需要的学习资料和本地数据
+# 运行镜像不需要的测试、学习资料和本地数据
+tests/
 docs/
 scripts/
 data/
 README.md
+requirements-test.txt
+requirements-demo.txt

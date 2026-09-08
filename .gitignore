@@ -3,6 +3,8 @@
 
 # 环境变量和密钥
 .env
+.env.*
+!.env.example
 
 # Python 缓存
 __pycache__/
@@ -30,4 +32,3 @@ data/*.db-*
 
 # 本地 PDF 文档
 data/documents/
-
