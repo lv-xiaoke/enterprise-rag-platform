@@ -1,0 +1,33 @@
+diff --git a/docs/17天每日学习/Day15.md b/docs/17天每日学习/Day15.md
+--- a/docs/17天每日学习/Day15.md
++++ b/docs/17天每日学习/Day15.md
+@@ -702,10 +702,10 @@ sequenceDiagram
+     C->>A: POST /knowledge-bases/{id}/query
+     A->>A: Pydantic 校验 question 和 top_k=1..10
+     A->>RAG: knowledge_base_id, question, top_k
+-    RAG->>RET: search(...)
++    RAG->>RET: search with knowledge_base_id, question, top_k
+     RET->>RET: 校验知识库存在
+     RET->>E: 生成归一化 Query Embedding
+-    RET->>CR: search_similar(...)
++    RET->>CR: search_similar with query vector and top_k
+     CR->>D: WHERE KB=id AND Document.status='ready'
+     D-->>CR: ORDER BY cosine_distance ASC LIMIT top_k
+     CR-->>RET: score = 1 - distance
+@@ -1185,7 +1185,7 @@ $report.failure_cases |
+     Select-Object id, category, reasons
+ 
+ rg -n `
+-    "MIN_RELEVANCE_SCORE|DEFAULT_TOP_K|Document.status == \"ready\"|cosine_distance" `
++    'MIN_RELEVANCE_SCORE|DEFAULT_TOP_K|Document.status == "ready"|cosine_distance' `
+     app\services\database_rag_service.py `
+     app\services\retrieval_service.py `
+     app\repositories\chunk_repository.py
+@@ -1332,6 +1332,6 @@ $actualRecallAt3 = [double](
+ | --- | --- | --- | --- |
+ | README 仍显示单 PDF FAISS 为主架构 | 只局部追加新内容，没有完整替换旧 README | `rg -n "只保留最近一次|服务重启后需要重新上传|260804_mini-rag-backend" README.md` | 按步骤 1 完整替换，再把仍有效的个人内容人工合并；不要保留互相冲突的“当前架构”段落 |
+-| GitHub 点击架构或报告出现 404 | README 位于根目录，而 docs 内文件的相对路径方向写错 | 核对 `README.md` 使用 `docs/...`，docs 内使用 `../app/...` | 按文件所在目录修正相对路径；运行步骤 4 的 `Test-Path` 清单 |
++| GitHub 点击架构或报告出现 404 | README 位于根目录，而 docs 内文件的相对路径方向写错 | 核对 `README.md` 使用 `docs/architecture.md`，docs 内使用 `../app/main.py` | 按文件所在目录修正相对路径；运行步骤 4 的 `Test-Path` 清单 |
+ | Mermaid 不渲染，只显示普通文本 | fence 不是 `mermaid`、缩进嵌套错误或节点文本含不兼容字符 | 打开 `README.md` 与 `docs/architecture.md` 的 Mermaid 代码块 | 保持三反引号顶格、语言名为 `mermaid`；先简化出错节点文本，不改真实组件关系 |
+ | README 写“阈值 0.65 已上线”，但代码是 0.55 | 把 `selected_parameters` 误当成生产配置回写结果 | `rg -n "MIN_RELEVANCE_SCORE|threshold" app/services/database_rag_service.py data/evaluation/enterprise_evaluation_report.json` | 改为“离线推荐 0.65、当前生产 0.55”；参数落地另建独立代码变更并回归 |
+ | Recall/MRR 数字与 JSON 不一致 | 手工抄错 key、混淆 Top-K，或源报告版本变化 | 执行第七节的 PowerShell 固定断言；查看 `dataset.version` | 以已提交 JSON 为唯一来源；若报告版本真的更新，同时更新数据集版本、指标、失败案例和生成时间 |

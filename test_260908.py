@@ -1,0 +1,2 @@
+values = []
+print(not values)
