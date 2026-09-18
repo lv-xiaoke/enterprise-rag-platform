@@ -32,3 +32,6 @@ data/*.db-*
 
 # 本地 PDF 文档
 data/documents/
+
+# Day 16 本地演示视频与运行状态
+artifacts/demo/
