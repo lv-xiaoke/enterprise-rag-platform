@@ -21,8 +21,15 @@ Thumbs.db
 # 运行镜像不需要的测试、学习资料和本地数据
 tests/
 docs/
-scripts/
+scripts/*
+!scripts/assign_legacy_knowledge_bases.py
 data/
 README.md
 requirements-test.txt
 requirements-demo.txt
+
+# API 镜像不包含 Web 构建与浏览器运行时
+frontend/
+artifacts/
+output/
+tmp/

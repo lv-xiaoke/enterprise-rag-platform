@@ -1,135 +1,50 @@
-# Enterprise RAG Platform
+# 企业知识库 AI 全栈应用
 
-一个面向企业制度与 SOP 场景的 RAG 后端：支持创建多个知识库、上传多份文本型 PDF、把文档元数据与 512 维向量持久化到 PostgreSQL + pgvector，并在指定知识库内完成带来源问答和证据不足拒答。
+面向企业制度与 SOP 的知识助手：React + TypeScript 前端、FastAPI 后端、PostgreSQL + pgvector，支持用户登录、私有知识库、多 PDF 入库、持久化会话、真实流式回答、原文来源核对和无证据拒答。
 
-当前核心 MVP、可靠性处理、演示数据、固定评测、pytest 回归测试和 Docker Compose 复现流程已经形成。仓库同时保留早期 SQLite + FAISS 接口，用于展示项目从单文档内存 Demo 向多知识库持久化架构的演进。
+本项目用于求职作品展示与小规模试用。旧 RAG 基线保留在 Service、评测与历史文档中；主应用统一使用带权限的 `/api`，旧 `/chat`、`/history`、`/upload`、`/rag/chat` 和无前缀知识库接口不再开放。
 
-## 核心能力
+## 第一轮升级资料
 
-- 创建、获取和列出知识库。
-- 向指定知识库上传多份 PDF，并查询文档处理状态。
-- 按页解析文本型 PDF，使用 `chunk_size=200`、`overlap=40` 切块。
-- 使用 `BAAI/bge-small-zh-v1.5` 生成归一化的 512 维向量。
-- 将 `KnowledgeBase → Document → Chunk`、页码、原文和向量持久化到 PostgreSQL + pgvector。
-- 只在指定知识库和 `ready` 文档内执行余弦相似度 Top-K 检索。
-- 返回回答、拒答标记、文档名、页码、Chunk ID、原文和相似度分数。
-- 检索证据低于当前生产阈值 `0.55` 时，在调用 LLM 前直接拒答。
-- 上传失败时保留安全的 `failed` 状态，不让半成品 Chunk 参与检索。
-- 使用 Alembic 管理 `vector` 扩展和三张核心业务表的可回滚迁移。
-- 使用 Docker Compose 编排 PostgreSQL、一次性迁移服务和 FastAPI，并通过命名 Volume 保留数据库与模型缓存。
-- 提供 4 份可公开虚构制度 PDF、18 道固定问题、参数实验报告和关键 pytest 回归测试。
+- [升级计划、接口契约与验收记录](docs/AI全栈第一轮升级计划.md)
+- [运行与面试指南](docs/AI全栈第一轮-运行与面试指南.md)
+- [真实模型验收记录](docs/真实模型验收记录.md)（真实 BGE + DeepSeek，回答与来源核对）
+- [原 RAG 检索评测报告](docs/evaluation-report.md)
+- [原后端架构说明](docs/architecture.md)（历史基线，用户/会话部分见第一轮指南）
 
-## 系统架构
+## 产品流程
 
-```mermaid
-flowchart LR
-    Client[客户端或 Swagger] --> API[FastAPI API]
-    API --> Ingestion[DocumentIngestionService]
-    API --> RAG[DatabaseRAGService]
-    Ingestion --> PDF[PDFService]
-    Ingestion --> Chunking[split_text]
-    Ingestion --> Embed[EmbeddingService]
-    Ingestion --> Repo[Repository]
-    RAG --> Retrieval[RetrievalService]
-    Retrieval --> Embed
-    Retrieval --> Repo
-    RAG --> LLM[LLMService]
-    Repo --> ORM[SQLAlchemy ORM]
-    ORM --> PG[(PostgreSQL + pgvector)]
-```
+注册/登录 → 创建知识库 → 上传文本型 PDF → 查看文档状态 → 新建会话 → 提问/追问 → 流式阅读 → 展开来源 → 刷新恢复历史。
 
-主链路分为两条：
+- 用户只能访问自己的知识库、文档、会话及消息；资源不存在或越权返回 404。
+- 密码使用 PBKDF2 哈希；随机登录令牌放在 HttpOnly cookie，数据库只保存摘要；退出登录会撤销会话。
+- 文档处理成功才进入 ready 状态；失败回滚 Chunk 并保留安全的 failed 状态。
+- 回答保存生成状态、文本与来源，支持停止生成、失败提示和刷新后核对。
+- 参考来源包括文档名、页码、Chunk 原文和分数；来源分数不是答案正确概率。
+
+## 技术与数据
 
 ```text
-文档入库：PDF → API → 解析 → Chunk → Embedding → Repository → PostgreSQL/pgvector
-知识库问答：Question → Query Embedding → 范围过滤 Top-K → 阈值拒答或 LLM → Answer + Sources
+浏览器 React/TypeScript
+  → 同源 /api（开发 Vite 代理；Compose Nginx 代理）
+  → FastAPI：认证 → 资源授权 → 文档/会话/RAG 编排
+  → PostgreSQL：用户、登录会话、知识库、文档、Chunk、会话、消息
+  → BGE 中文 Embedding + pgvector 检索 → LLM 流 → SSE → 浏览器
 ```
 
-完整的组件职责、入库与问答时序、ER 图和失败边界见 [系统架构说明](docs/architecture.md)。
+使用既有 `BAAI/bge-small-zh-v1.5` 512 维向量与 Top-3 检索。默认阈值仍为 0.55，通过 `RAG_MIN_RELEVANCE_SCORE` 配置；旧小样本实验推荐的 0.65 尚不代表普适最优值。
 
-## 数据模型
+## Docker Compose 运行
 
-```mermaid
-erDiagram
-    KNOWLEDGE_BASE ||--o{ DOCUMENT : contains
-    DOCUMENT ||--o{ CHUNK : contains
-    KNOWLEDGE_BASE {
-        int id PK
-        string name UK
-        text description
-        datetime created_at
-    }
-    DOCUMENT {
-        int id PK
-        int knowledge_base_id FK
-        string filename
-        string status
-        text failure_reason
-        datetime created_at
-        datetime updated_at
-    }
-    CHUNK {
-        int id PK
-        int document_id FK
-        int page_number
-        int chunk_index
-        text content
-        vector_512 embedding
-        datetime created_at
-    }
-```
-
-`Document.status` 只允许 `pending`、`processing`、`ready`、`failed`。检索查询联结 `Chunk` 与 `Document`，同时过滤知识库 ID 和 `ready` 状态；因此 processing/failed 文档和其他知识库的 Chunk 不会进入回答上下文。
-
-## 技术栈
-
-| 层次 | 技术与当前固定版本 | 职责 |
-| --- | --- | --- |
-| API | Python 3.11、FastAPI 0.141.1、Uvicorn 0.52.1、Pydantic 2.13.4 | HTTP 接口、依赖注入、输入输出校验 |
-| 业务 | Python Service 类 | PDF 入库、检索、阈值拒答、Prompt 和 LLM 编排 |
-| 数据访问 | SQLAlchemy 2.0.52、psycopg 3.3.4 | ORM、Session、事务和 PostgreSQL 驱动 |
-| 向量数据库 | PostgreSQL 16、pgvector 扩展、Python pgvector 0.5.0 | 结构化数据、`vector(512)` 和余弦距离检索 |
-| 迁移 | Alembic 1.19.1 | vector 扩展与业务表版本管理 |
-| AI/PDF | sentence-transformers 5.7.0、`BAAI/bge-small-zh-v1.5`、pypdf 6.15.0、HTTPX 0.28.1 | Embedding、文本型 PDF 解析和 LLM API 调用 |
-| 质量 | pytest 8.4.2、固定 JSON 数据集 | 业务规则回归与离线检索/拒答实验 |
-| 运行 | Dockerfile、Docker Compose | PostgreSQL、迁移、API 和持久化环境复现 |
-
-完整依赖见 [requirements.txt](requirements.txt)，测试附加依赖见 [requirements-test.txt](requirements-test.txt)。
-
-## 企业知识库 API
-
-| 方法 | 路径 | 成功状态 | 作用 |
-| --- | --- | --- | --- |
-| GET | `/` | 200 | 服务根提示 |
-| GET | `/health` | 200 / 503 | 检查数据库连接并报告 LLM 是否配置 |
-| POST | `/knowledge-bases` | 201 | 创建唯一名称的知识库 |
-| GET | `/knowledge-bases` | 200 | 列出知识库 |
-| GET | `/knowledge-bases/{knowledge_base_id}` | 200 | 获取知识库详情 |
-| POST | `/knowledge-bases/{knowledge_base_id}/documents` | 201 | 上传并同步处理一份 PDF |
-| GET | `/knowledge-bases/{knowledge_base_id}/documents` | 200 | 列出知识库内文档及状态 |
-| GET | `/knowledge-bases/{knowledge_base_id}/documents/{document_id}` | 200 | 获取文档详情 |
-| POST | `/knowledge-bases/{knowledge_base_id}/query` | 200 | 在指定知识库内检索、拒答或生成带来源回答 |
-
-旧 `/chat`、`/history`、`/request-info`、`/upload` 和 `/rag/chat` 仍保留为第一阶段 SQLite/FAISS 学习链路，不是当前企业知识库主入口。
-
-## 使用 Docker Compose 快速运行
-
-### 1. 准备公开配置
-
-以下命令适用于 Windows PowerShell：
+准备 Docker Desktop（Linux 引擎）及本地配置：
 
 ```powershell
-git clone https://github.com/lv-xiaoke/enterprise-rag-platform.git
-Set-Location enterprise-rag-platform
-
-if (-not (Test-Path -LiteralPath ".env")) {
-    Copy-Item -LiteralPath ".env.example" -Destination ".env"
+if (-not (Test-Path -LiteralPath .env)) {
+    Copy-Item -LiteralPath .env.example -Destination .env
 }
 ```
 
-打开本地 `.env`，至少把 `POSTGRES_PASSWORD` 改为自己的本地值。只有执行生成式问答时才必须填写 `LLM_API_KEY`、`LLM_BASE_URL` 和 `LLM_MODEL`；真实 `.env` 已被 Git 与 Docker 构建上下文忽略，绝不能提交。
-
-### 2. 构建并启动
+修改 `.env` 的数据库密码。生成式回答还需要配置 `LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL`；凭据仅放后端环境，禁止写进前端或提交到 Git。浏览器地址与 `APP_ORIGIN` 保持一致。
 
 ```powershell
 docker compose config --quiet
@@ -137,251 +52,93 @@ docker compose up --build -d
 docker compose ps --all
 ```
 
-启动顺序是：
+- Web：`http://localhost:8080`，首次访问自行注册，没有硬编码演示密码。
+- API 文档：`http://127.0.0.1:8000/docs`。
+- 健康检查：`http://127.0.0.1:8000/health`。
+- 顺序：数据库 healthy → Alembic 迁移成功 → API healthy → Web。
+- Embedding 首次使用时加载/下载，模型缓存由命名 Volume 保留；首次上传可能较慢。
+- PostgreSQL 数据由命名 Volume 保存；停止服务使用 `docker compose stop`，保留数据。
+- 本轮 API 采用单 worker；启动时将遗留 generating 消息标为 interrupted。多 worker 的恢复租约属于后续升级。
 
-```text
-postgres healthy
-→ migrate 执行 alembic upgrade head 并以 0 退出
-→ api 启动并通过数据库感知的 /health
-```
+本地 HTTP 使用 `AUTH_COOKIE_SECURE=false`。正式 HTTPS 部署设置为 true，并配置实际 `APP_ORIGIN` 与可信代理；这里提供部署文件，不会自动公开发布应用。
 
-API 首次启动会下载或加载中文 Embedding 模型。Compose 为该缓存提供命名 Volume；首次健康检查可能需要几分钟。
+### Windows 下镜像认证连接超时
 
-### 3. 检查服务
-
-```powershell
-$health = Invoke-RestMethod `
-    -Uri "http://127.0.0.1:8000/health" `
-    -Method Get
-
-$health | ConvertTo-Json
-docker compose exec -T api alembic current
-```
-
-数据库可用时，健康响应结构为：
-
-```json
-{
-  "status": "ok",
-  "database_connected": true,
-  "llm_configured": false
-}
-```
-
-`llm_configured` 取决于本地配置，属于动态值；Alembic 当前 head 应为 `e780fe92751b`。
-
-Swagger 地址：<http://127.0.0.1:8000/docs>
-
-## 最小多文档流程
-
-### 1. 创建知识库
+本机已验证：直接访问 `auth.docker.io` 超时，使用正在运行的本地 HTTP 代理 `127.0.0.1:7877` 可以访问认证服务。还出现过 `docker pull` 成功而 Compose/BuildKit 认证超时的差异；在执行构建的同一个 PowerShell 中设置客户端代理后，三个基础镜像认证和拉取均通过。
 
 ```powershell
-$createBody = @{
-    name = "公开演示制度库"
-    description = "只包含仓库内虚构制度 PDF"
-} | ConvertTo-Json
-
-$createBytes = [System.Text.Encoding]::UTF8.GetBytes($createBody)
-
-$knowledgeBase = Invoke-RestMethod `
-    -Uri "http://127.0.0.1:8000/knowledge-bases" `
-    -Method Post `
-    -ContentType "application/json; charset=utf-8" `
-    -Body $createBytes
-
-$knowledgeBase | ConvertTo-Json
+# 端口必须与自己的 HTTP/Mixed 代理一致；7877 是本机已验证的端口
+$env:HTTP_PROXY='http://127.0.0.1:7877'
+$env:HTTPS_PROXY='http://127.0.0.1:7877'
+$env:NO_PROXY='localhost,127.0.0.1,::1'
+docker buildx imagetools inspect node:22-alpine
+docker compose build --build-arg HTTP_PROXY=http://host.docker.internal:7877 --build-arg HTTPS_PROXY=http://host.docker.internal:7877 --build-arg NO_PROXY=localhost,127.0.0.1,::1 api web
+docker compose up -d
+docker compose ps --all
 ```
 
-知识库 `id` 和时间戳由数据库生成，是动态值。重复使用同名知识库会返回 HTTP 409。
+这些变量仅在当前终端及其子进程生效；新开终端需重新设置，并保持代理程序运行。HTTPS_PROXY 的值仍可使用 `http://`，因为这里指 HTTP 代理地址。客户端运行在 Windows，使用 `127.0.0.1`；构建容器中的 `127.0.0.1` 是容器自己，因此 RUN 阶段用 `host.docker.internal` 访问宿主机代理。本机已实际验证该地址可访问 PyPI，避免后端依赖直连下载缓慢。Docker CLI 的代理环境变量、Docker Desktop 的代理设置和 Dockerfile RUN 阶段的代理是不同作用范围；详情见 [Docker CLI 官方说明](https://docs.docker.com/reference/cli/docker/#environment-variables)、[构建代理参数](https://docs.docker.com/build/building/variables/#proxy-arguments) 和 [Desktop 代理设置](https://docs.docker.com/desktop/settings-and-maintenance/settings/#proxies)。镜像认证超时恢复不等于依赖安装或整个部署已完成，最终状态见验收记录。
 
-### 2. 上传 4 份虚构 PDF
+## 本地前后端开发
+
+后端环境延用已有 `.venv`。数据库启动且配置完成后：
 
 ```powershell
-Get-ChildItem -LiteralPath "data\demo_policies\pdfs" -Filter "*.pdf" |
-    ForEach-Object {
-        curl.exe `
-            --fail-with-body `
-            -sS `
-            -X POST `
-            -F "file=@$($_.FullName);type=application/pdf" `
-            "http://127.0.0.1:8000/knowledge-bases/$($knowledgeBase.id)/documents"
-    }
-```
-
-每份成功响应包含 `document`、`page_count` 和 `chunk_count`；ID、数量和时间戳均由实际文件与数据库决定。
-
-### 3. 查询文档状态
-
-```powershell
-$documents = Invoke-RestMethod `
-    -Uri "http://127.0.0.1:8000/knowledge-bases/$($knowledgeBase.id)/documents" `
-    -Method Get
-
-$documents |
-    Select-Object id, filename, status, failure_reason |
-    Format-Table
-```
-
-只有 `status=ready` 的文档参与检索。
-
-### 4. 执行带来源问答
-
-先确认 `.env` 中三个 `LLM_*` 配置都已填写并重新创建 API 容器，然后执行：
-
-```powershell
-$queryBody = @{
-    question = "连续三天以上年假需要提前多久申请，并经过哪些确认？"
-    top_k = 3
-} | ConvertTo-Json
-
-$queryBytes = [System.Text.Encoding]::UTF8.GetBytes($queryBody)
-
-$result = Invoke-RestMethod `
-    -Uri "http://127.0.0.1:8000/knowledge-bases/$($knowledgeBase.id)/query" `
-    -Method Post `
-    -ContentType "application/json; charset=utf-8" `
-    -Body $queryBytes
-
-$result | ConvertTo-Json -Depth 6
-```
-
-稳定响应结构如下；回答、ID、来源数量、原文和分数是动态值：
-
-```json
-{
-  "answer": "基于当前知识库生成的回答",
-  "refused": false,
-  "sources": [
-    {
-      "chunk_id": 1,
-      "document_id": 1,
-      "filename": "员工请假与考勤制度.pdf",
-      "page_number": 1,
-      "chunk_index": 3,
-      "content": "可回查的原始文本块",
-      "score": 0.771898
-    }
-  ]
-}
-```
-
-`score` 是余弦相似度，不是答案正确概率。没有来源达到当前阈值时，接口返回 `refused=true`、固定拒答文本和空来源数组，而且不会调用 LLM。
-
-## 测试
-
-测试分为不依赖真实 LLM 的 Service/模型测试，以及需要 PostgreSQL + pgvector 的 Repository 集成测试。数据库启动并迁移到 head 后，在宿主机执行：
-
-```powershell
-python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-test.txt
-.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-当前用例覆盖：
-
-- `question` 去空格和 `top_k=1..10` 边界。
-- 来源字段进入 Prompt 并原样映射回响应。
-- 低分证据在调用 LLM 前拒答。
-- 知识库隔离、processing/failed 状态过滤、Top-K 数量和相似度排序。
-- 每个集成测试使用外层事务并在结束后回滚，减少测试数据污染。
-
-## 固定评测
-
-评测语料由 4 份两页虚构制度 PDF 组成，数据集版本为 `2026-09-04-v1`，包含 12 道可回答题和 6 道无答案题。评测脚本复用生产的 `SessionLocal → RetrievalService → ChunkRepository`，但不调用 LLM，从而隔离检索、阈值和延迟变量。
-
-| Top-K | Recall@K | MRR@K | 完整证据题占比 |
-| ---: | ---: | ---: | ---: |
-| 1 | 0.616667 | 0.916667 | 0.416667 |
-| 3 | 0.972222 | 0.958333 | 0.916667 |
-| 5 | 0.972222 | 0.958333 | 0.916667 |
-
-固定选参规则在候选组合中推荐 `Top-K=3、threshold=0.65`：平衡拒答准确率 `0.958333`，总体拒答正确率 `0.944444`。该阈值是离线实验建议，当前 `DatabaseRAGService` 仍使用 `0.55`，尚未作为生产配置变更落地。
-
-36 个预热后 “Query Embedding + pgvector Top-K” 样本的平均延迟为 `12.797136 ms`，P95 为 `15.2546 ms`。这些值来自小型本地数据集，不包含模型初始化、HTTP 和 LLM 生成，不能解释为生产 SLA。
-
-详见 [评测报告](docs/evaluation-report.md) 和 [结构化源报告](data/evaluation/enterprise_evaluation_report.json)。
-
-复现入口：
+另开终端，Node.js 22.12 或更新版本：
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\validate_enterprise_questions.py
-.\.venv\Scripts\python.exe scripts\run_evaluation.py `
-    --knowledge-base-id $knowledgeBase.id `
-    --repetitions 2
+Set-Location frontend
+npm.cmd ci
+npm.cmd run dev
 ```
 
-目标知识库必须已经成功入库仓库内 4 份冻结 PDF。
+浏览器打开 `http://localhost:5173`。Vite 代理 `/api` 到后端；不要直接让前端跨域调用 API。若 `.env` 中有 `APP_ORIGIN`，开发时改为浏览器实际地址。
 
-## 项目结构
+## 旧知识库数据
 
-```text
-enterprise-rag-platform/
-├── app/
-│   ├── main.py                         # FastAPI 与错误映射
-│   ├── db.py                           # Engine、Session、连接探针
-│   ├── models.py                       # Pydantic 请求/响应模型
-│   ├── orm_models.py                   # KnowledgeBase、Document、Chunk
-│   ├── repositories/                   # 数据访问与 pgvector 查询
-│   └── services/                       # 入库、检索、RAG、PDF、Embedding、LLM
-├── migrations/versions/                # vector 扩展和三表迁移
-├── tests/                              # 模型、Service 与真实数据库集成测试
-├── scripts/                            # 演示 PDF、数据校验和参数实验脚本
-├── data/
-│   ├── demo_policies/                  # 可重建的虚构制度 PDF 与清单
-│   └── evaluation/                     # 固定问题、基线与结构化报告
-├── docs/
-│   ├── architecture.md                 # 系统架构与数据流
-│   └── evaluation-report.md            # 评测摘要、失败案例与限制
-├── .env.example                        # 无真实秘密的公开配置模板
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-└── README.md
+升级迁移保留旧知识库、文档和 Chunk。历史知识库的 owner_id 为 NULL，不会自动展示给任意注册用户。先注册，再对每个明确的知识库 ID 执行一次归属分配：
+
+```powershell
+docker compose exec api python -m scripts.assign_legacy_knowledge_bases --username alice --knowledge-base-id 1
 ```
 
-## 关键设计选择
+命令仅允许分配一个未归属的知识库，拒绝覆盖已有 owner。请替换真实用户名与 ID；不要将示例 1 当成固定值。
 
-- 使用 PostgreSQL + pgvector 同时保存业务关系、原文、页码和向量，避免内存 FAISS 索引与元数据映射分离且重启丢失。
-- Repository 只负责数据访问，Service 负责编排 PDF、Embedding、事务、状态和 LLM；FastAPI 负责协议校验与 HTTP 错误映射。
-- 入库先提交 `processing` Document，再在一个事务中写入全部 Chunk 并切换为 `ready`；失败时回滚半成品并单独提交安全的 `failed` 状态。
-- 文档向量和查询向量都归一化，pgvector 查询使用余弦距离并转换为 `score = 1 - distance`。
-- 检索在 SQL 层同时限定知识库 ID 和 `Document.status='ready'`，避免跨知识库或未完成文档污染上下文。
-- 阈值拒答发生在 LLM 调用之前，降低没有可靠证据时的幻觉和无效外部调用。
-- Alembic 负责数据库版本历史；Docker Compose 明确 PostgreSQL healthy、迁移成功、API ready 三个阶段。
+## 自动检查
 
-## 已知限制
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+Set-Location frontend
+npm.cmd test
+npm.cmd run build
+```
 
-- 只支持带文字层的 PDF；不支持 OCR、扫描件、图片、复杂表格或多模态解析。
-- 文档在上传请求中同步解析与生成 Embedding；大文件可能长时间占用请求，当前没有异步队列和任务进度接口。
-- Embedding 模型在应用导入时加载，首次启动需要下载或读取模型缓存，启动时间与内存占用较高。
-- 当前没有登录、权限、租户授权、限流、审计日志或管理前端；知识库 ID 过滤不等于访问控制。
-- 当前 pgvector 查询没有 HNSW/IVFFlat ANN 索引，尚未进行大规模语料和并发压测。
-- 离线实验推荐阈值 `0.65`，生产代码仍使用 `0.55`；任何参数同步都需要独立提交并重跑回归与评测。
-- 固定评测只衡量检索、证据覆盖、阈值分类和检索延迟，不衡量真实 LLM 答案的正确性与生成延迟。
-- 评测规模只有 4 份虚构 PDF 和 18 道人工问题，指标不能外推为生产通用准确率或 SLA。
-- 旧 SQLite/FAISS 接口仍在同一个 `app/main.py` 中，后续可以在保持兼容或完成迁移后单独清理。
+后端完整测试需要已迁移的 PostgreSQL + pgvector；事务夹具在测试后回滚。为避免影响已有数据，建议使用独立测试数据库。
 
-## 安全边界
+浏览器集成测试启动真实 API 与 Vite，替换外部 Embedding/LLM 推理，验证真实路由、权限、PDF 解析、数据库与 SSE。测试模型文本明确标注“测试模型”，不会进入生产应用。
 
-- `.env` 与 `.env.*` 默认被 Git 忽略，只有 `.env.example` 可以提交。
-- `.dockerignore` 排除本地环境、秘密、测试、学习资料和本地数据，真实密钥不会进入构建上下文。
-- 数据库与上游异常通过固定 HTTP 文本返回，不应回显密码、完整数据库 URL、API Key、驱动堆栈或内部异常对象。
-- 演示 PDF 全部为虚构内容，不包含真实企业制度、姓名、证件、账户或合同信息。
+```powershell
+# 在 frontend 目录执行；沿用正确的 POSTGRES_*，使用独立测试库
+$env:E2E_DATABASE_URL='postgresql+psycopg://测试用户:测试密码@127.0.0.1:55432/测试数据库'
+npx.cmd playwright install chromium
+npx.cmd playwright test
+```
 
-## 文档与证据
+测试服务仅在 `RAG_E2E_TESTING=1` 时允许启动；Playwright 配置自动设置。未设置 E2E_DATABASE_URL 时会创建一次性 SQLite 测试文件，并使用测试专用余弦 SQL 函数；这不能代替 pgvector 验收。已有 Edge 可通过 `E2E_BROWSER_CHANNEL=msedge` 使用，避免重复下载浏览器。
 
-- [系统架构说明](docs/architecture.md)
-- [评测报告](docs/evaluation-report.md)
-- [结构化评测源报告](data/evaluation/enterprise_evaluation_report.json)
-- [固定评测集](data/evaluation/enterprise_questions.json)
-- [演示数据说明](data/demo_policies/README.md)
-- [核心 ORM](app/orm_models.py)
-- [数据库版入库服务](app/services/document_ingestion_service.py)
-- [pgvector 检索](app/repositories/chunk_repository.py)
-- [数据库版 RAG](app/services/database_rag_service.py)
-- [Docker Compose](docker-compose.yml)
+CI 在干净 pgvector 数据库中执行迁移、pytest、前端测试/构建和 Playwright；首次推送后需查看真实 Actions 结果，本地存在工作流文件不等于云端 CI 已运行。
 
-## 项目定位
+## 已知边界
 
-这是一个以可运行代码、失败安全、可复现评测和可核对来源为主线的学习型企业 RAG 后端。当前仓库适合本地演示、架构讲解和小规模实验，不把尚未完成的生产化能力包装成现成功能。
+- 只支持带文字层的 PDF；暂不支持 OCR、扫描件和复杂表格。
+- 上传仍同步完成解析与 Embedding，本轮没有后台任务队列或真实百分比进度。
+- 来源展示提取的原文，不提供原始 PDF 页面预览。
+- 有限历史用于追问上下文，不代表无限记忆。
+- 未实现账号找回、企业 SSO、复杂角色/共享权限、计费和生产级滥用防护。
+- 既有评测只有 4 份虚构 PDF、18 道题，评测检索与拒答；Recall@3 不能当作最终回答准确率，检索延迟不能当作端到端 SLA。
+- 自动化中的模型替身验证交互与工程链路；真实模型效果仍须使用本地 LLM 配置单独核验。

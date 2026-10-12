@@ -1,4 +1,4 @@
-from sentence_transformers import SentenceTransformer
+from threading import Lock
 
 
 MODEL_NAME = "BAAI/bge-small-zh-v1.5"
@@ -9,7 +9,17 @@ class EmbeddingService:
     """负责把查询和文档文本转换成向量。"""
 
     def __init__(self) -> None:
-        self.model = SentenceTransformer(MODEL_NAME)
+        self._model = None
+        self._load_lock = Lock()
+
+    @property
+    def model(self):
+        if self._model is None:
+            with self._load_lock:
+                if self._model is None:
+                    from sentence_transformers import SentenceTransformer
+                    self._model = SentenceTransformer(MODEL_NAME)
+        return self._model
 
     def embed_query(self, query: str) -> list[float]:
         """把一个短查询转换成归一化向量。"""

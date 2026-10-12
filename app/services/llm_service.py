@@ -1,3 +1,6 @@
+import json
+from collections.abc import AsyncIterator
+
 import httpx
 
 from app.config import LLM_API_KEY, LLM_BASE_URL, LLM_MODEL
@@ -10,6 +13,60 @@ class LLMService:
         self.api_key = LLM_API_KEY
         self.base_url = LLM_BASE_URL
         self.model = LLM_MODEL
+        self.transport = None
+
+    async def stream_chat(self, messages: list[dict[str, str]]) -> AsyncIterator[str]:
+        """Forward OpenAI-compatible SSE deltas without buffering the whole answer."""
+        if not self.is_configured():
+            raise ValueError("大模型服务未配置")
+        received_text = False
+        event_lines: list[str] = []
+        event_size = 0
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(60, connect=10), transport=self.transport) as client:
+                async with client.stream(
+                    "POST", f"{self.base_url.rstrip('/')}/chat/completions",
+                    headers={"Authorization": f"Bearer {self.api_key}", "Accept": "text/event-stream"},
+                    json={"model": self.model, "messages": messages, "stream": True},
+                ) as response:
+                    response.raise_for_status()
+                    async for line in response.aiter_lines():
+                        if line:
+                            event_size += len(line)
+                            if event_size > 262144:
+                                raise RuntimeError("大模型流事件过大")
+                            if line.startswith("data:"):
+                                event_lines.append(line[5:].lstrip())
+                            continue
+                        if not event_lines:
+                            event_size = 0
+                            continue
+                        payload = "\n".join(event_lines)
+                        event_lines, event_size = [], 0
+                        if payload == "[DONE]":
+                            if not received_text:
+                                raise RuntimeError("大模型返回了空内容")
+                            return
+                        try:
+                            data = json.loads(payload)
+                            if "error" in data:
+                                raise ValueError("upstream error")
+                            choices = data["choices"]
+                            if not choices and "usage" in data:
+                                continue
+                            delta = choices[0]["delta"].get("content")
+                            if delta is not None and not isinstance(delta, str):
+                                raise ValueError("invalid delta")
+                        except (ValueError, KeyError, IndexError, TypeError, AttributeError) as exc:
+                            raise RuntimeError("大模型返回流格式异常") from exc
+                        if delta:
+                            received_text = True
+                            yield delta
+            raise RuntimeError("大模型流意外中断")
+        except httpx.TimeoutException as exc:
+            raise RuntimeError("大模型请求超时") from exc
+        except httpx.HTTPError as exc:
+            raise RuntimeError("大模型服务暂时不可用") from exc
 
     def is_configured(self) -> bool:
         """判断大模型配置是否完整。"""

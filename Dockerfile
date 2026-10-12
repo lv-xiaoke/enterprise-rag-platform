@@ -16,6 +16,7 @@ RUN python -m pip install -r requirements.txt
 COPY alembic.ini ./
 COPY migrations ./migrations
 COPY app ./app
+COPY scripts/assign_legacy_knowledge_bases.py ./scripts/assign_legacy_knowledge_bases.py
 
 EXPOSE 8000
 

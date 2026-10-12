@@ -35,3 +35,10 @@ data/documents/
 
 # Day 16 本地演示视频与运行状态
 artifacts/demo/
+
+# Web 构建与浏览器验收产物
+frontend/node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+artifacts/fullstack/

@@ -1,4 +1,5 @@
 import os
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -26,3 +27,24 @@ POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 POSTGRES_DB = os.getenv("POSTGRES_DB", "")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "")
+
+
+@dataclass(frozen=True)
+class AppSettings:
+    cookie_secure: bool = field(default_factory=lambda: os.getenv("AUTH_COOKIE_SECURE", "false").lower() == "true")
+    session_hours: int = field(default_factory=lambda: int(os.getenv("AUTH_SESSION_HOURS", "168")))
+    max_upload_bytes: int = field(default_factory=lambda: int(os.getenv("MAX_UPLOAD_BYTES", "10485760")))
+    min_relevance_score: float = field(default_factory=lambda: float(os.getenv("RAG_MIN_RELEVANCE_SCORE", "0.55")))
+    app_origin: str = field(default_factory=lambda: os.getenv("APP_ORIGIN", ""))
+    history_budget: int = 12000
+    max_generations: int = 8
+    max_answer_chars: int = 32000
+    generation_timeout_seconds: int = 180
+
+    def __post_init__(self):
+        if self.session_hours < 1 or self.session_hours > 8760:
+            raise ValueError("AUTH_SESSION_HOURS 必须在 1 到 8760 之间")
+        if self.max_upload_bytes < 1 or self.history_budget < 1 or self.max_generations < 1:
+            raise ValueError("上传、历史和并发限额必须大于 0")
+        if not -1 <= self.min_relevance_score <= 1:
+            raise ValueError("RAG_MIN_RELEVANCE_SCORE 必须在 -1 到 1 之间")
