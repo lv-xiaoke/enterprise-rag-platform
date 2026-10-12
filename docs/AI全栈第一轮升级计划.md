@@ -154,9 +154,11 @@ SSE 采用 `event: NAME\ndata: JSON\n\n`；前端必须处理网络分片、UTF-
 
 还需区分构建客户端与容器 RUN 阶段：客户端代理为 `http://127.0.0.1:7877`，RUN 阶段通过 build-arg 指定 `http://host.docker.internal:7877`。已用真实容器验证后者访问 PyPI 为 200，随后依赖安装、新镜像导出和 Compose 启动全部完成。可复制命令见 [README 的 Windows 超时处理](../README.md#windows-下镜像认证连接超时)。未修改系统 DNS、Docker 全局代理、永久环境变量或用户的代理监听配置。
 
-完整容器验收使用独立项目、数据库与端口：Web `http://localhost:8082`，API `127.0.0.1:8012`，PostgreSQL `127.0.0.1:55433`。环境来自 `.env.example`；测试覆盖文件只读挂载已有 Hugging Face 缓存并设置离线模式，避免额外下载模型。运行服务保留，数据在本项目独立命名卷中；没有操作其他现有数据库。
+完整容器验收使用独立项目、数据库与端口：Web `http://localhost:8082`，API `127.0.0.1:8012`，PostgreSQL `127.0.0.1:55433`。初次环境来自 `.env.example`；测试覆盖文件只读挂载已有 Hugging Face 缓存并设置离线模式，避免额外下载模型。运行服务保留，数据在本项目独立命名卷中；没有操作其他现有数据库。
 
-本次容器配置未放入真实 LLM key：验证真实 BGE/PDF、SSE拒答，以及有证据但模型缺配置时安全保存 failed/来源；外部 DeepSeek 真实生成使用前述独立真实模型验收结果。Nginx SSE 的 meta 在约0.015秒收到、最终拒答在约3.359秒完成，验证本次状态流未被全量缓冲；这是单次本地观察，不是 SLA。原始结果/截图保存在本地忽略目录 `artifacts/fullstack/`。
+初次容器配置未放入真实 LLM key：验证真实 BGE/PDF、SSE拒答，以及有证据但模型缺配置时安全保存 failed/来源。Nginx SSE 的 meta 在约0.015秒收到、最终拒答在约3.359秒完成，验证本次状态流未被全量缓冲；这是单次本地观察，不是 SLA。原始结果/截图保存在本地忽略目录 `artifacts/fullstack/`。
+
+同日用户反馈网页提示“大模型服务未配置”后，确认根因为容器使用了空值示例环境。创建 Git 忽略的 `.env.rag-round1`，仅从现有 `.env` 接入三项 LLM 配置，沿用原数据库凭据、卷和端口，并重建 API。健康检查 `llm_configured=true`；真实 Edge 经 Nginx 完成注册、建库、上传仓库虚构 PDF、DeepSeek 问答、来源抽屉与刷新恢复，最终回答 `completed`、3 条来源。已有用户文档保留，无需重新上传。后续启动须沿用同一环境文件，命令见 README；详细结果见 [真实模型验收记录](真实模型验收记录.md#容器网页真实模型补验)。
 
 ### 使用与复习
 

@@ -79,6 +79,21 @@ docker compose ps --all
 
 这些变量仅在当前终端及其子进程生效；新开终端需重新设置，并保持代理程序运行。HTTPS_PROXY 的值仍可使用 `http://`，因为这里指 HTTP 代理地址。客户端运行在 Windows，使用 `127.0.0.1`；构建容器中的 `127.0.0.1` 是容器自己，因此 RUN 阶段用 `host.docker.internal` 访问宿主机代理。本机已实际验证该地址可访问 PyPI，避免后端依赖直连下载缓慢。Docker CLI 的代理环境变量、Docker Desktop 的代理设置和 Dockerfile RUN 阶段的代理是不同作用范围；详情见 [Docker CLI 官方说明](https://docs.docker.com/reference/cli/docker/#environment-variables)、[构建代理参数](https://docs.docker.com/build/building/variables/#proxy-arguments) 和 [Desktop 代理设置](https://docs.docker.com/desktop/settings-and-maintenance/settings/#proxies)。镜像认证超时恢复不等于依赖安装或整个部署已完成，最终状态见验收记录。
 
+### PDF 上传成功，但问答提示“大模型服务未配置”
+
+上传使用 PDF 解析、本地 Embedding 和数据库；生成回答还需要后端同时配置 `LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL`。因此上传成功并不代表 LLM 已配置。健康检查中的 `llm_configured` 可检查三项是否齐全，但凭据是否有效仍需实际问答验证。
+
+Compose 使用 `--env-file` 指定文件时，应修改该文件中的模型配置。宿主机 `.env` 中已有密钥，不代表使用 `.env.example` 启动的容器能够读取它。修改后用相同项目名、环境文件和覆盖文件执行 `up -d --no-build api`，让 Compose 重建 API 容器；仅执行 `restart` 不会更新容器环境变量。无需重新上传 PDF。
+
+本机 `8082` 演示环境现使用本地忽略文件 `.env.rag-round1`，已从现有 `.env` 接入上述三项模型配置，保留原数据库、文档和端口。后续启动该演示环境时沿用以下命令（覆盖文件为本机验收产物，依赖已有模型缓存）：
+
+```powershell
+docker compose -p rag-round1-check --env-file .env.rag-round1 -f docker-compose.yml -f artifacts/fullstack/container-override.json up -d --no-build
+Invoke-RestMethod http://127.0.0.1:8012/health
+```
+
+`.env.rag-round1` 包含真实凭据，不得提交到 Git；`.env.example` 保持公开空值示例。该环境已通过 Edge 网页、Nginx、真实 BGE 和 DeepSeek 问答验证，记录见 [真实模型验收记录](docs/真实模型验收记录.md)。
+
 ## 本地前后端开发
 
 后端环境延用已有 `.venv`。数据库启动且配置完成后：

@@ -1,0 +1,30 @@
+{
+  "file": "D:\\my_develop\\A_work_program\\AI-study-2609\\enterprise-rag-platform\\output\\pdf\\rag_test_enterprise_handbook.pdf",
+  "pages": 8,
+  "size_bytes": 104456,
+  "text_characters_per_page": [
+    564,
+    445,
+    508,
+    426,
+    500,
+    413,
+    464,
+    397
+  ],
+  "verified": [
+    "All source paragraphs match project PDFService extraction",
+    "All source paragraphs match pdfplumber extraction",
+    "Not encrypted"
+  ],
+  "page_topics": [
+    "员工请假与考勤制度 / 第一章 适用范围与日常考勤",
+    "员工请假与考勤制度 / 第二章 病假、出差与异常处理",
+    "差旅与费用报销制度 / 第一章 差旅申请与费用标准",
+    "差旅与费用报销制度 / 第二章 报销、复核与采购付款衔接",
+    "采购与办公资产管理制度 / 第一章 采购申请与分级审批",
+    "采购与办公资产管理制度 / 第二章 到货验收、资产登记与付款",
+    "访客与会议室管理办法 / 第一章 访客预约与现场管理",
+    "访客与会议室管理办法 / 第二章 会议室预订与使用"
+  ]
+}
