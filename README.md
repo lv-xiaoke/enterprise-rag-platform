@@ -148,6 +148,24 @@ npx.cmd playwright test
 
 CI 在干净 pgvector 数据库中执行迁移、pytest、前端测试/构建和 Playwright；首次推送后需查看真实 Actions 结果，本地存在工作流文件不等于云端 CI 已运行。
 
+## 请求追踪与故障定位
+
+每次 HTTP 请求由后端生成 `X-Request-ID`，SSE 的 `meta/error` 事件携带同一个 `request_id`。上传或问答失败时，页面展示可复制的请求 ID；网络未收到响应时不会编造 ID。请求 ID 不写入业务表，刷新后保留原来的回答和状态，本轮不保存错误提示中的 ID。
+
+应用 logger `rag.app` 将一行一个 JSON 的日志输出到标准输出，记录权限检查、PDF 解析、向量生成、文档事务、检索、模型生成和终态保存。字段包括 `request_id`、`event`、`stage`、`outcome`、`duration_ms` 及安全的 `error_code`；不记录原文、文件名、Prompt、回答、密码或令牌。Uvicorn 的访问日志仍使用原有格式。
+
+本地运行时直接查看后端终端；Compose 使用实际启动时相同的项目、环境文件和覆盖参数执行 `logs api`。默认项目示例：
+
+```powershell
+docker compose logs --since 10m api | Select-String -SimpleMatch '从页面复制的请求ID'
+```
+
+例如：问答失败时先找到同 ID 的 `retrieval`，再看 `llm` 和 `generation_finished`。`llm_timeout` 表示上游模型超时，`llm_unconfigured` 表示配置不完整，`persisted=true` 才表示终态已保存。SSE 失败时 HTTP 仍可能为 200，须结合业务 `outcome` 判断；用户停止生成应为 `interrupted`。没有终态保存成功的记录时，不能假设数据库已经更新。
+
+`llm_first_delta.duration_ms` 从开始调用流到收到首个非空内容增量；`llm` 阶段总耗时包含消费模型流及增量保存/转发，不能视为纯上游推理耗时。`request_finished.duration_ms` 到流与清理结束，不能当作首字延迟。本轮不增加模型用量统计、监控平台或后台入库队列。
+
+实现范围与验收步骤见 [请求追踪实施计划](docs/superpowers/plans/2026-10-13-request-tracing.md)。容器需要重建镜像才能包含这些代码；宿主机回归通过不代表已有运行容器已更新。
+
 ## 已知边界
 
 - 只支持带文字层的 PDF；暂不支持 OCR、扫描件和复杂表格。

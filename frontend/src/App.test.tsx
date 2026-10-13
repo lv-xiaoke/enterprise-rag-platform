@@ -26,6 +26,44 @@ function api(routes: Record<string, unknown>) {
   );
 }
 describe("knowledge workspace", () => {
+  it("shows an upload request ID and clears it before the next upload", async () => {
+    window.location.hash='#/knowledge-bases/1/documents';
+    let attempt=0;
+    api({
+      '/api/auth/me':user,
+      '/api/knowledge-bases/1':kb,
+      '/api/knowledge-bases/1/documents':(init?:RequestInit)=>init?.method==='POST'
+        ? new Response('{"detail":"文档处理失败"}',{status:502,headers:++attempt===1?{'X-Request-ID':'e'.repeat(32)}:{}})
+        : [],
+    });
+    render(<App />);
+    const input=await screen.findByLabelText('上传 PDF');
+    fireEvent.change(input,{target:{files:[new File(['pdf'],'test.pdf')]}});
+    expect(await screen.findByText('e'.repeat(32))).toBeInTheDocument();
+    fireEvent.change(input,{target:{files:[new File(['pdf'],'next.pdf')]}});
+    await waitFor(()=>expect(screen.queryByText('e'.repeat(32))).not.toBeInTheDocument());
+  });
+  it("shows the SSE failure ID and removes it when switching conversations", async () => {
+    window.location.hash='#/knowledge-bases/1/chat/7';
+    api({
+      '/api/auth/me':user,
+      '/api/knowledge-bases/1':kb,
+      '/api/knowledge-bases/1/conversations':[7,8].map(id=>({id,knowledge_base_id:1,title:`会话${id}`,created_at:'',updated_at:''})),
+      '/api/conversations/7/messages':[],
+      '/api/conversations/8/messages':[],
+      '/api/conversations/7/messages/stream':()=>new Response(
+        `event: meta\ndata: {"conversation_id":7,"user_message_id":11,"assistant_message_id":12}\n\nevent: error\ndata: {"detail":"模型超时","request_id":"${'f'.repeat(32)}"}\n\n`,
+        {headers:{'Content-Type':'text/event-stream','X-Request-ID':'f'.repeat(32)}},
+      ),
+    });
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText('输入问题'),{target:{value:'报销制度'}});
+    await waitFor(()=>expect(screen.getByRole('button',{name:'发送问题'})).toBeEnabled());
+    fireEvent.click(screen.getByRole('button',{name:'发送问题'}));
+    expect(await screen.findByText('f'.repeat(32))).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:'打开会话：会话8'}));
+    await waitFor(()=>expect(screen.queryByText('f'.repeat(32))).not.toBeInTheDocument());
+  });
   it("registers with cookie API and shows the empty knowledge library", async () => {
     api({
       "/api/auth/me": new Response('{"detail":"请登录"}', { status: 401 }),

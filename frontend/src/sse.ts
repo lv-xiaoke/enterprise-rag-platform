@@ -1,10 +1,14 @@
+import { errorText, isAbort, parseRequestId, RequestError } from "./api";
+
 export type StreamEvent = { event: string; data: Record<string, unknown> };
 export async function consumeSSE(
   response: Response,
   onEvent: (event: StreamEvent) => void,
   signal?: AbortSignal,
 ): Promise<void> {
-  if (!response.body) throw new Error("浏览器未提供流式响应，请重试");
+  const headerId = parseRequestId(response.headers.get("X-Request-ID"));
+  let requestId = headerId;
+  if (!response.body) throw new RequestError("浏览器未提供流式响应，请重试", requestId);
   const reader = response.body.getReader();
   const decoder = new TextDecoder("utf-8", { fatal: true });
   let buffer = "",
@@ -32,6 +36,8 @@ export async function consumeSSE(
     } catch {
       throw new Error("流式数据格式错误，请重新加载历史记录");
     }
+    if (!headerId && !requestId && (event === "meta" || event === "error"))
+      requestId = parseRequestId(data.request_id);
     onEvent({ event, data });
     if (event === "error")
       throw new Error(
@@ -63,6 +69,9 @@ export async function consumeSSE(
     }
     if (!finished)
       throw new Error("连接已中断，已收到的内容会保留，请刷新历史记录");
+  } catch (error) {
+    if (isAbort(error)) throw error;
+    throw new RequestError(errorText(error), requestId);
   } finally {
     signal?.removeEventListener("abort", abort);
     try {

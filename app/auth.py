@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from starlette.concurrency import run_in_threadpool
 
 from app.orm_models import AuthSession, KnowledgeBase, User
+from app.observability import trace_stage
 
 COOKIE_NAME = 'rag_session'
 # PBKDF2 is deliberately bounded so attacker-controlled credential lengths cannot
@@ -68,14 +69,16 @@ def authenticated_user_id(request: Request) -> int:
 
 
 async def current_user(request: Request) -> int:
-    return await run_in_threadpool(authenticated_user_id, request)
+    with trace_stage('authorization',failure_code='request_rejected'):
+        return await run_in_threadpool(authenticated_user_id, request)
 
 
 def require_knowledge_base(session, kb_id: int, user_id: int):
-    kb = session.scalar(select(KnowledgeBase).where(KnowledgeBase.id == kb_id, KnowledgeBase.owner_id == user_id))
-    if kb is None:
-        raise HTTPException(404, '知识库不存在')
-    return kb
+    with trace_stage('authorization',failure_code='request_rejected',user_id=user_id,knowledge_base_id=kb_id):
+        kb = session.scalar(select(KnowledgeBase).where(KnowledgeBase.id == kb_id, KnowledgeBase.owner_id == user_id))
+        if kb is None:
+            raise HTTPException(404, '知识库不存在')
+        return kb
 
 
 def issue_session(session, user: User, request: Request, response: Response):

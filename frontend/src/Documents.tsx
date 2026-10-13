@@ -5,7 +5,7 @@ import {
   FilePdfOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
-import { errorText, isAbort, json } from "./api";
+import { errorText, isAbort, json, requestIdOf } from "./api";
 import { date, ErrorNotice, Loading } from "./components";
 import { useResource } from "./hooks";
 import type { DocumentRecord } from "./types";
@@ -23,11 +23,13 @@ export default function Documents({ kbId }: { kbId: number }) {
   const [uploading, setUploading] = useState(false),
     [error, setError] = useState(""),
     [success, setSuccess] = useState("");
+  const [requestId, setRequestId] = useState<string>();
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
   async function upload(file: File) {
     if (controller.current) return;
     setError("");
+    setRequestId(undefined);
     setSuccess("");
     if (!file.name.toLowerCase().endsWith(".pdf")) {
       setError("请选择 PDF 文件；扫描件需要先转换为可提取文字的 PDF");
@@ -61,6 +63,7 @@ export default function Documents({ kbId }: { kbId: number }) {
     } catch (e) {
       if (!active.signal.aborted && !isAbort(e)) {
         setError(errorText(e));
+        setRequestId(requestIdOf(e));
         docs.reload();
       }
     } finally {
@@ -112,7 +115,7 @@ export default function Documents({ kbId }: { kbId: number }) {
           <p role="status">同步入库可能需要一些时间，请保持页面打开。</p>
         )}
       </div>
-      <ErrorNotice error={error} />
+      <ErrorNotice error={error} requestId={requestId} />
       {success && (
         <p className="success-notice" role="status">
           {success}

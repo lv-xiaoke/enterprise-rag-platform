@@ -6,6 +6,16 @@ import httpx
 from app.config import LLM_API_KEY, LLM_BASE_URL, LLM_MODEL
 
 
+class LLMConfigurationError(ValueError):
+    error_code = 'llm_unconfigured'
+
+
+class LLMServiceError(RuntimeError):
+    def __init__(self, message: str, code: str = 'llm_error'):
+        super().__init__(message)
+        self.error_code = code
+
+
 class LLMService:
     """负责调用大语言模型服务。"""
 
@@ -18,7 +28,7 @@ class LLMService:
     async def stream_chat(self, messages: list[dict[str, str]]) -> AsyncIterator[str]:
         """Forward OpenAI-compatible SSE deltas without buffering the whole answer."""
         if not self.is_configured():
-            raise ValueError("大模型服务未配置")
+            raise LLMConfigurationError("大模型服务未配置")
         received_text = False
         event_lines: list[str] = []
         event_size = 0
@@ -34,7 +44,7 @@ class LLMService:
                         if line:
                             event_size += len(line)
                             if event_size > 262144:
-                                raise RuntimeError("大模型流事件过大")
+                                raise LLMServiceError("大模型流事件过大",'llm_invalid_stream')
                             if line.startswith("data:"):
                                 event_lines.append(line[5:].lstrip())
                             continue
@@ -45,7 +55,7 @@ class LLMService:
                         event_lines, event_size = [], 0
                         if payload == "[DONE]":
                             if not received_text:
-                                raise RuntimeError("大模型返回了空内容")
+                                raise LLMServiceError("大模型返回了空内容",'llm_invalid_stream')
                             return
                         try:
                             data = json.loads(payload)
@@ -58,15 +68,15 @@ class LLMService:
                             if delta is not None and not isinstance(delta, str):
                                 raise ValueError("invalid delta")
                         except (ValueError, KeyError, IndexError, TypeError, AttributeError) as exc:
-                            raise RuntimeError("大模型返回流格式异常") from exc
+                            raise LLMServiceError("大模型返回流格式异常",'llm_invalid_stream') from exc
                         if delta:
                             received_text = True
                             yield delta
-            raise RuntimeError("大模型流意外中断")
+            raise LLMServiceError("大模型流意外中断",'llm_invalid_stream')
         except httpx.TimeoutException as exc:
-            raise RuntimeError("大模型请求超时") from exc
+            raise LLMServiceError("大模型请求超时",'llm_timeout') from exc
         except httpx.HTTPError as exc:
-            raise RuntimeError("大模型服务暂时不可用") from exc
+            raise LLMServiceError("大模型服务暂时不可用") from exc
 
     def is_configured(self) -> bool:
         """判断大模型配置是否完整。"""
@@ -79,7 +89,7 @@ class LLMService:
     async def chat(self, message: str) -> str:
         """向大模型发送一条用户消息并返回回答。"""
         if not self.is_configured():
-            raise ValueError("大模型配置不完整，请检查 .env")
+            raise LLMConfigurationError("大模型配置不完整，请检查 .env")
 
         url = f"{self.base_url.rstrip('/')}/chat/completions"
 
@@ -112,7 +122,7 @@ class LLMService:
                 )
                 response.raise_for_status()
         except httpx.TimeoutException as exc:
-            raise RuntimeError("大模型请求超时") from exc
+            raise LLMServiceError("大模型请求超时",'llm_timeout') from exc
         except httpx.HTTPStatusError as exc:
             status_code = exc.response.status_code
             raise RuntimeError(

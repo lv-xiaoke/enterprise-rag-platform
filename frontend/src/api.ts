@@ -1,15 +1,25 @@
-export class ApiError extends Error {
+export class RequestError extends Error {
+  constructor(message: string, public requestId?: string) {
+    super(message);
+  }
+}
+export const parseRequestId = (value: unknown): string | undefined =>
+  typeof value === "string" && /^[a-f0-9]{32}$/.test(value) ? value : undefined;
+export const requestIdOf = (error: unknown) =>
+  error instanceof RequestError ? error.requestId : undefined;
+export class ApiError extends RequestError {
   constructor(
     public status: number,
     message: string,
+    requestId?: string,
   ) {
-    super(message);
+    super(message, requestId);
   }
 }
 export const errorText = (error: unknown) =>
   error instanceof Error ? error.message : "请求失败，请稍后重试";
 export const isAbort = (error: unknown) =>
-  error instanceof Error && error.name === "AbortError";
+  typeof error === "object" && error !== null && "name" in error && error.name === "AbortError";
 export async function request(
   path: string,
   options: RequestInit = {},
@@ -50,7 +60,7 @@ export async function request(
     checkAbort();
     if (response.status === 401 && !path.startsWith("/auth/"))
       window.dispatchEvent(new Event("session-expired"));
-    throw new ApiError(response.status, detail);
+    throw new ApiError(response.status, detail, parseRequestId(response.headers.get("X-Request-ID")));
   }
   return response;
 }
@@ -59,7 +69,14 @@ export async function json<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const response = await request(path, options);
-  const data = response.status === 204 ? (undefined as T) : await response.json();
+  let data: T;
+  try {
+    data = response.status === 204 ? (undefined as T) : await response.json();
+  } catch {
+    if (options.signal?.aborted)
+      throw new DOMException("请求已取消", "AbortError");
+    throw new RequestError("服务器响应无法读取，请重试", parseRequestId(response.headers.get("X-Request-ID")));
+  }
   if (options.signal?.aborted)
     throw new DOMException("请求已取消", "AbortError");
   return data;

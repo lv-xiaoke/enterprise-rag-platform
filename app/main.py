@@ -13,6 +13,7 @@ from app.auth import router as auth_router
 from app.config import AppSettings
 from app.conversations import recover_generating, router as conversation_router
 from app.db import SessionLocal
+from app.observability import RequestTraceMiddleware
 from app.services.embedding_service import EmbeddingService
 from app.services.llm_service import LLMService
 from app.services.pdf_service import PDFService
@@ -69,6 +70,7 @@ def create_app(*,session_factory=None,embedding_service=None,pdf_service=None,ll
     application.state.llm_service=llm_service or LLMService()
     application.state.generation_slots=asyncio.Semaphore(settings.max_generations)
     application.add_middleware(BrowserRequestGuard,settings=settings)
+    application.add_middleware(RequestTraceMiddleware)
     application.include_router(auth_router)
     application.include_router(knowledge_router)
     application.include_router(conversation_router)

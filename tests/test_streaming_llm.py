@@ -7,6 +7,26 @@ import pytest
 from app.services.llm_service import LLMService
 
 
+@pytest.mark.parametrize('fault,code',[('timeout','llm_timeout'),('status','llm_error'),('format','llm_invalid_stream')])
+def test_real_httpx_failure_wrappers_keep_safe_error_codes(fault, code):
+    from app.services.llm_service import LLMServiceError
+    def upstream(request):
+        if fault=='timeout':
+            raise httpx.ReadTimeout('secret-upstream-token')
+        if fault=='status':
+            return httpx.Response(503,text='secret-upstream-token')
+        return httpx.Response(200,text='data: invalid-json\n\n')
+    async def run():
+        service=LLMService()
+        service.api_key,service.base_url,service.model='test','http://upstream','model'
+        service.transport=httpx.MockTransport(upstream)
+        return [chunk async for chunk in service.stream_chat([{'role':'user','content':'问'}])]
+    with pytest.raises(LLMServiceError) as caught:
+        asyncio.run(run())
+    assert caught.value.error_code==code
+    assert 'secret-upstream-token' not in str(caught.value)
+
+
 def test_llm_forwards_actual_stream_and_multiturn_messages():
     seen = []
 

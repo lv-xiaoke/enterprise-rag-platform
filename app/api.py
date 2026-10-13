@@ -13,6 +13,7 @@ from app.services.database_rag_service import DatabaseRAGService, REFUSAL_ANSWER
 from app.services.document_ingestion_service import DocumentIngestionService, DocumentInputError, DocumentProcessingError
 from app.services.rag_service import build_rag_prompt
 from app.services.retrieval_service import RetrievalService
+from app.observability import trace_stage
 
 router = APIRouter(prefix='/api/knowledge-bases')
 
@@ -106,8 +107,11 @@ def check_owned(factory,kb_id,user_id):
 def retrieve_sources(state, kb_id, user_id, question, top_k=3):
     with state.session_factory() as session:
         require_knowledge_base(session,kb_id,user_id)
-        results = RetrievalService(session,state.embedding_service).search(kb_id,question,top_k)
-        return [result for result in results if result.score >= state.settings.min_relevance_score]
+        with trace_stage('retrieval',knowledge_base_id=kb_id,user_id=user_id) as metrics:
+            results = RetrievalService(session,state.embedding_service).search(kb_id,question,top_k)
+            filtered = [result for result in results if result.score >= state.settings.min_relevance_score]
+            metrics['source_count'] = len(filtered)
+            return filtered
 
 
 def source_snapshot(results):
@@ -124,7 +128,8 @@ async def query(kb_id: int, body: KnowledgeBaseQueryRequest, request: Request, u
         results = await run_in_threadpool(retrieve_sources,request.app.state,kb_id,user_id,body.question,body.top_k)
         if not results:
             return KnowledgeBaseQueryResponse(answer=REFUSAL_ANSWER,refused=True,sources=[])
-        answer = await request.app.state.llm_service.chat(evidence_prompt(body.question,results))
+        with trace_stage('llm',failure_code='llm_error',knowledge_base_id=kb_id):
+            answer = await request.app.state.llm_service.chat(evidence_prompt(body.question,results))
         if not isinstance(answer,str) or not answer.strip():
             raise RuntimeError('empty answer')
         return KnowledgeBaseQueryResponse(answer=answer.strip(),refused=False,sources=source_snapshot(results))

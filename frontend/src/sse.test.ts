@@ -15,6 +15,20 @@ function response(text: string, cut = 1) {
   );
 }
 describe("stream protocol", () => {
+  it("keeps the HTTP ID when an SSE error contains a conflicting ID", async () => {
+    const reply=response(`event: error\ndata: ${JSON.stringify({detail:'模型超时',request_id:'b'.repeat(32)})}\n\n`);
+    reply.headers.set('X-Request-ID','a'.repeat(32));
+    await expect(consumeSSE(reply,()=>{})).rejects.toMatchObject({message:'模型超时',requestId:'a'.repeat(32)});
+  });
+  it("preserves the meta ID when a stream ends unexpectedly without headers", async () => {
+    const reply=response(`event: meta\ndata: ${JSON.stringify({request_id:'c'.repeat(32)})}\n\nevent: delta\ndata: {"text":"部分"}\n\n`);
+    await expect(consumeSSE(reply,()=>{})).rejects.toMatchObject({requestId:'c'.repeat(32)});
+  });
+  it("keeps the response ID when stream parsing fails", async () => {
+    const reply=response('event: delta\ndata: invalid\n\n');
+    reply.headers.set('X-Request-ID','d'.repeat(32));
+    await expect(consumeSSE(reply,()=>{})).rejects.toMatchObject({requestId:'d'.repeat(32)});
+  });
   it("decodes Chinese across UTF8 bytes and dispatches multiple CRLF events in order", async () => {
     const events: unknown[] = [];
     await consumeSSE(

@@ -12,6 +12,7 @@ from app.repositories import (
 from app.services.chunk_service import split_text
 from app.services.embedding_service import EmbeddingService
 from app.services.pdf_service import PDFService
+from app.observability import error_code, log_event, trace_stage
 
 
 DEFAULT_CHUNK_SIZE = 200
@@ -22,6 +23,7 @@ MAX_FILENAME_LENGTH = 255
 
 class DocumentInputError(ValueError):
     """客户端修改文件输入后可以解决的错误。"""
+    error_code = 'pdf_invalid'
 
 
 class DocumentProcessingError(RuntimeError):
@@ -99,12 +101,13 @@ class DocumentIngestionService:
             )
 
         try:
-            document = self._documents.create(
-                knowledge_base_id=knowledge_base.id,
-                filename=cleaned_filename,
-                status="processing",
-            )
-            self._session.commit()
+            with trace_stage('document_persist',knowledge_base_id=knowledge_base_id):
+                document = self._documents.create(
+                    knowledge_base_id=knowledge_base.id,
+                    filename=cleaned_filename,
+                    status="processing",
+                )
+                self._session.commit()
         except SQLAlchemyError as exc:
             self._session.rollback()
             raise DocumentProcessingError(
@@ -114,32 +117,22 @@ class DocumentIngestionService:
         document_id = document.id
 
         try:
-            pages = self._extract_pdf_pages(pdf_bytes)
-            prepared_chunks = self._prepare_chunks(pages)
-
-            if not prepared_chunks:
-                raise DocumentInputError(
-                    "PDF 没有生成任何 Chunk"
-                )
+            with trace_stage('pdf_parse',failure_code='pdf_invalid',document_id=document_id,knowledge_base_id=knowledge_base_id):
+                pages = self._extract_pdf_pages(pdf_bytes)
+                prepared_chunks = self._prepare_chunks(pages)
+                if not prepared_chunks:
+                    raise DocumentInputError("PDF 没有生成任何 Chunk")
 
             try:
-                embeddings = (
-                    self._embedding_service.embed_documents(
-                        [
-                            chunk.content
-                            for chunk in prepared_chunks
-                        ]
+                with trace_stage('embedding',failure_code='embedding_error',document_id=document_id):
+                    embeddings = self._embedding_service.embed_documents(
+                        [chunk.content for chunk in prepared_chunks]
                     )
-                )
+                    self._validate_embeddings(embeddings=embeddings,expected_count=len(prepared_chunks))
             except Exception as exc:
                 raise DocumentProcessingError(
                     "文档向量生成失败"
                 ) from exc
-
-            self._validate_embeddings(
-                embeddings=embeddings,
-                expected_count=len(prepared_chunks),
-            )
 
             chunk_inputs = [
                 ChunkCreate(
@@ -153,21 +146,17 @@ class DocumentIngestionService:
                     embeddings,
                 )
             ]
-            stored_chunks = self._chunks.bulk_create(
-                document_id=document_id,
-                chunks=chunk_inputs,
-            )
-
-            ready_document = self._documents.update_status(
-                document_id=document_id,
-                status="ready",
-            )
-            if ready_document is None:
-                raise DocumentProcessingError(
-                    "Document 状态更新失败"
+            with trace_stage('document_persist',document_id=document_id):
+                stored_chunks = self._chunks.bulk_create(
+                    document_id=document_id,
+                    chunks=chunk_inputs,
                 )
-
-            self._session.commit()
+                ready_document = self._documents.update_status(document_id=document_id,status="ready")
+                if ready_document is None:
+                    raise DocumentProcessingError("Document 状态更新失败")
+                self._session.commit()
+            log_event('document_finished',outcome='completed',document_id=document_id,
+                      knowledge_base_id=knowledge_base_id,chunk_count=len(stored_chunks),persisted=True)
 
             return DocumentIngestionResult(
                 document_id=document_id,
@@ -180,15 +169,17 @@ class DocumentIngestionService:
         except Exception as exc:
             self._session.rollback()
             try:
-                self._mark_document_failed(
-                    document_id=document_id,
-                    error=exc,
-                )
+                with trace_stage('document_persist',document_id=document_id):
+                    self._mark_document_failed(document_id=document_id,error=exc)
             except Exception as status_error:
                 self._session.rollback()
+                log_event('document_finished',outcome='failed',document_id=document_id,
+                          error_code=error_code(status_error),persisted=False)
                 raise DocumentProcessingError(
                     "文档处理失败，且无法保存 failed 状态"
                 ) from status_error
+            log_event('document_finished',outcome='failed',document_id=document_id,
+                      error_code=error_code(exc),persisted=True)
 
             if isinstance(
                 exc,

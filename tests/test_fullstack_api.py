@@ -89,6 +89,132 @@ def events(response):
     return result
 
 
+def trace_records(caplog, request_id):
+    return [record.trace_fields for record in caplog.records
+            if record.name == 'rag.app' and record.trace_fields.get('request_id') == request_id]
+
+
+def test_upload_trace_covers_stages_and_private_values_are_absent(api, caplog):
+    client, _, _, _ = api
+    register(client)
+    kb = make_kb(client)
+    with caplog.at_level('INFO',logger='rag.app'):
+        response = client.post(f'/api/knowledge-bases/{kb}/documents',files={'file':('private-policy.pdf',b'pdf')})
+    assert response.status_code == 201
+    records = trace_records(caplog,response.headers['X-Request-ID'])
+    stages = {record.get('stage') for record in records}
+    assert {'authorization','pdf_parse','embedding','document_persist'} <= stages
+    terminal = [record for record in records if record['event']=='document_finished']
+    assert len(terminal)==1 and terminal[0]['outcome']=='completed'
+    assert 'private-policy.pdf' not in str(records) and '三十天' not in str(records)
+
+
+@pytest.mark.parametrize('fault,stage,code', [('pdf','pdf_parse','pdf_invalid'),('embedding','embedding','embedding_error')])
+def test_upload_failure_trace_and_rollback(api, caplog, fault, stage, code):
+    from app.orm_models import Chunk, Document
+    client, factory, _, application = api
+    register(client)
+    kb = make_kb(client)
+    if fault=='embedding':
+        class BrokenEmbedding(FakeEmbedding):
+            def embed_documents(self,texts):
+                raise RuntimeError('secret-embedding-content')
+        application.state.embedding_service = BrokenEmbedding()
+    with caplog.at_level('INFO',logger='rag.app'):
+        response = client.post(f'/api/knowledge-bases/{kb}/documents',files={'file':('private.pdf',b'empty' if fault=='pdf' else b'pdf')})
+    assert response.status_code in (400,502)
+    records = trace_records(caplog,response.headers['X-Request-ID'])
+    assert any(r.get('stage')==stage and r.get('error_code')==code and r['outcome']=='failed' for r in records)
+    assert len([r for r in records if r['event']=='document_finished'])==1
+    with factory() as session:
+        doc = session.scalar(select(Document).where(Document.knowledge_base_id==kb))
+        assert doc.status=='failed'
+        assert list(session.scalars(select(Chunk).where(Chunk.document_id==doc.id)))==[]
+    assert 'secret-embedding-content' not in str(records)
+
+
+@pytest.mark.parametrize('fault,code', [('unconfigured','llm_unconfigured'),('timeout','llm_timeout'),('midstream','llm_error')])
+def test_stream_failure_trace_matches_http_and_database(api, caplog, fault, code):
+    import httpx
+    client, _, llm, application = api
+    register(client)
+    kb = make_kb(client)
+    client.post(f'/api/knowledge-bases/{kb}/documents',files={'file':('policy.pdf',b'pdf')})
+    conversation = make_conversation(client,kb)
+    if fault=='unconfigured':
+        llm.configured=False
+    elif fault=='midstream':
+        llm.fail=True
+    else:
+        class TimeoutLLM(FakeLLM):
+            async def stream_chat(self,messages):
+                yield '部分回答'
+                raise httpx.ReadTimeout('secret upstream URL and token')
+        application.state.llm_service=TimeoutLLM()
+    with caplog.at_level('INFO',logger='rag.app'):
+        response = client.post(f'/api/conversations/{conversation}/messages/stream',json={'content':'报销'})
+    request_id = response.headers['X-Request-ID']
+    data = events(response)
+    assert data[0][1]['request_id']==request_id
+    assert data[-1][0]=='error' and data[-1][1]['request_id']==request_id
+    records = trace_records(caplog,request_id)
+    final = [r for r in records if r['event']=='generation_finished']
+    assert len(final)==1 and final[0]['outcome']=='failed' and final[0]['error_code']==code
+    assert final[0]['persisted'] is True
+    assert any(r.get('stage')=='retrieval' for r in records)
+    assert len([r for r in records if r['event']=='llm_first_delta']) == (0 if fault=='unconfigured' else 1)
+    message = client.get(f'/api/conversations/{conversation}/messages').json()[-1]
+    assert message['status']=='failed'
+    assert message['content'] == ('' if fault=='unconfigured' else '三十天' if fault=='midstream' else '部分回答')
+    assert 'secret upstream' not in str(records)
+
+
+def test_success_and_refusal_traces_are_distinct(api, caplog):
+    client, _, _, _ = api
+    register(client)
+    kb = make_kb(client)
+    conversation=make_conversation(client,kb)
+    with caplog.at_level('INFO',logger='rag.app'):
+        refusal=client.post(f'/api/conversations/{conversation}/messages/stream',json={'content':'制度'})
+    refusal_records=trace_records(caplog,refusal.headers['X-Request-ID'])
+    assert [r['outcome'] for r in refusal_records if r['event']=='generation_finished']==['refused']
+    assert not any(r['event']=='llm_first_delta' for r in refusal_records)
+    client.post(f'/api/knowledge-bases/{kb}/documents',files={'file':('policy.pdf',b'pdf')})
+    with caplog.at_level('INFO',logger='rag.app'):
+        response=client.post(f'/api/conversations/{conversation}/messages/stream',json={'content':'报销'})
+    records=trace_records(caplog,response.headers['X-Request-ID'])
+    assert [r['outcome'] for r in records if r['event']=='generation_finished']==['completed']
+    first=[r for r in records if r['event']=='llm_first_delta']
+    total=[r for r in records if r.get('stage')=='llm' and r['event']=='stage_finished']
+    assert len(first)==len(total)==1 and 0<=first[0]['duration_ms']<=total[0]['duration_ms']
+    retrieval=[r for r in records if r.get('stage')=='retrieval']
+    assert len(retrieval)==1 and retrieval[0]['source_count']==1 and retrieval[0]['duration_ms']>=0
+
+
+def test_terminal_persistence_outage_is_not_reported_as_saved(api, caplog, monkeypatch):
+    from sqlalchemy.exc import OperationalError
+    import app.conversations as conversations
+    client, _, _, _ = api
+    register(client)
+    kb=make_kb(client)
+    client.post(f'/api/knowledge-bases/{kb}/documents',files={'file':('policy.pdf',b'pdf')})
+    conversation=make_conversation(client,kb)
+    original=conversations.save_progress
+    def unavailable(factory,message_id,content,status='generating',sources=None):
+        if status!='generating':
+            raise OperationalError('secret-sql',None,Exception('secret-db-password'))
+        return original(factory,message_id,content,status,sources)
+    monkeypatch.setattr(conversations,'save_progress',unavailable)
+    with caplog.at_level('INFO',logger='rag.app'):
+        response=client.post(f'/api/conversations/{conversation}/messages/stream',json={'content':'报销'})
+    assert events(response)[-1][0]=='error'
+    records=trace_records(caplog,response.headers['X-Request-ID'])
+    final=[r for r in records if r['event']=='generation_finished']
+    assert len(final)==1 and final[0]['persisted'] is False and final[0]['error_code']=='database_error'
+    assert 'secret-sql' not in str(records) and 'secret-db-password' not in str(records)
+    assert client.get(f'/api/conversations/{conversation}/messages').json()[-1]['status']=='generating'
+
+
 def test_registration_sessions_hashes_logout_and_legacy_disabled(api):
     client, factory, _, _ = api
     name = 'user_' + uuid4().hex[:12]

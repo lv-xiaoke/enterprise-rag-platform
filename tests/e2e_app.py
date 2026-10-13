@@ -10,6 +10,8 @@ import math
 import os
 from pathlib import Path
 import tempfile
+import logging
+import httpx
 
 if os.getenv("RAG_E2E_TESTING") != "1":
     raise RuntimeError("This test server requires RAG_E2E_TESTING=1")
@@ -42,6 +44,9 @@ class TestLLM:
         return "【测试模型】请按制度提前提交申请，并由负责人审批。"
 
     async def stream_chat(self, messages):
+        if "故障验收" in messages[-1]['content']:
+            yield "【测试模型】故障前已保存内容。"
+            raise httpx.ReadTimeout('test-only fault, not a real upstream request')
         if "中断验收" in messages[-1]['content']:
             for text in ["【测试模型】中断验收："] + ["尚未完成。"] * 20:
                 await asyncio.sleep(0.25)
@@ -88,3 +93,12 @@ app = create_app(
     pdf_service=PDFService(),
     llm_service=TestLLM(),
 )
+
+# Test-only capture of the actual application JSON formatter, never a debug API.
+from app.observability import configure_logging, JSONFormatter
+configure_logging()
+log_path = Path(__file__).resolve().parents[1] / 'artifacts/fullstack/request-tracing-e2e.jsonl'
+log_path.parent.mkdir(parents=True, exist_ok=True)
+log_handler = logging.FileHandler(log_path,encoding='utf-8')
+log_handler.setFormatter(JSONFormatter())
+logging.getLogger('rag.app').addHandler(log_handler)

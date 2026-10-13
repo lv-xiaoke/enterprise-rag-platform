@@ -7,7 +7,7 @@ import {
   SendOutlined,
   StopOutlined,
 } from "@ant-design/icons";
-import { errorText, isAbort, json, request } from "./api";
+import { errorText, isAbort, json, request, parseRequestId, requestIdOf, RequestError } from "./api";
 import { ErrorNotice, Loading } from "./components";
 import { navigate, useResource } from "./hooks";
 import { consumeSSE } from "./sse";
@@ -183,6 +183,7 @@ function Thread({ id, onChanged }: { id: number; onChanged: () => void }) {
   const active = useRef<AbortController | null>(null),
     alive = useRef(true),
     bottom = useRef<HTMLDivElement>(null);
+  const [requestId, setRequestId] = useState<string>();
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -218,6 +219,7 @@ function Thread({ id, onChanged }: { id: number; onChanged: () => void }) {
     setBusy(true);
     setQuestion("");
     setError("");
+    setRequestId(undefined);
     setRefused(false);
     let assistantId = -2;
     const now = new Date().toISOString();
@@ -256,7 +258,7 @@ function Thread({ id, onChanged }: { id: number; onChanged: () => void }) {
         signal: controller.signal,
       });
       if (!response.headers.get("content-type")?.includes("text/event-stream"))
-        throw new Error("服务器未返回流式响应，请刷新历史记录");
+        throw new RequestError("服务器未返回流式响应，请刷新历史记录", parseRequestId(response.headers.get("X-Request-ID")));
       await consumeSSE(
         response,
         ({ event, data }) => {
@@ -300,6 +302,7 @@ function Thread({ id, onChanged }: { id: number; onChanged: () => void }) {
       );
     } catch (e) {
       if (alive.current) {
+        setRequestId(isAbort(e) ? undefined : requestIdOf(e));
         setError(
           isAbort(e)
             ? "已停止生成。已收到的内容会保留，可刷新历史核对保存状态。"
@@ -388,7 +391,7 @@ function Thread({ id, onChanged }: { id: number; onChanged: () => void }) {
         <div ref={bottom} />
       </div>
       <div className="composer">
-        <ErrorNotice error={error} />
+        <ErrorNotice error={error} requestId={requestId} />
         {refused && (
           <div className="refusal-notice">
             当前知识库中未找到足够依据，请尝试补充文档或换一种问法。
