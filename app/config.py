@@ -37,7 +37,7 @@ class AppSettings:
     min_relevance_score: float = field(default_factory=lambda: float(os.getenv("RAG_MIN_RELEVANCE_SCORE", "0.55")))
     app_origin: str = field(default_factory=lambda: os.getenv("APP_ORIGIN", ""))
     history_budget: int = 12000
-    max_generations: int = 8
+    max_generations: int = field(default_factory=lambda: int(os.getenv("MAX_GENERATIONS", "8")))
     max_answer_chars: int = 32000
     generation_timeout_seconds: int = 180
 

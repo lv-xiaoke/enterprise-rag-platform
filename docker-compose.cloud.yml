@@ -1,0 +1,91 @@
+# SSH-only trial deployment. No public Web/DB/API listener.
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Required}
+      POSTGRES_USER: ${POSTGRES_USER:?Required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Required}
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "work_mem=2MB", "-c", "max_connections=30"]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    logging: &logs
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+  migrate:
+    build:
+      context: .
+      args:
+        DEBIAN_MIRROR: "https://mirrors.cloud.tencent.com"
+        PIP_INDEX_URL: "https://mirrors.cloud.tencent.com/pypi/simple"
+    image: enterprise-rag-api:${RELEASE_TAG:?Required}
+    command: ["alembic", "upgrade", "head"]
+    environment: &app_environment
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:?Required}
+      POSTGRES_USER: ${POSTGRES_USER:?Required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Required}
+      LLM_API_KEY: ${LLM_API_KEY:?Required}
+      LLM_BASE_URL: ${LLM_BASE_URL:?Required}
+      LLM_MODEL: ${LLM_MODEL:?Required}
+      APP_ORIGIN: ${APP_ORIGIN:-http://127.0.0.1:18080}
+      AUTH_COOKIE_SECURE: "false"
+      AUTH_SESSION_HOURS: "24"
+      MAX_UPLOAD_BYTES: "2097152"
+      MAX_GENERATIONS: "1"
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      TOKENIZERS_PARALLELISM: "false"
+      RAG_MIN_RELEVANCE_SCORE: "0.55"
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: "no"
+    mem_limit: 384m
+    logging: *logs
+
+  api:
+    build:
+      context: .
+      args:
+        DEBIAN_MIRROR: "https://mirrors.cloud.tencent.com"
+        PIP_INDEX_URL: "https://mirrors.cloud.tencent.com/pypi/simple"
+    image: enterprise-rag-api:${RELEASE_TAG:?Required}
+    environment: *app_environment
+    volumes:
+      - huggingface_cache:/root/.cache/huggingface
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    restart: unless-stopped
+    mem_limit: 1200m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=5).read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    logging: *logs
+
+  web:
+    build: ./frontend
+    image: enterprise-rag-web:${RELEASE_TAG:?Required}
+    ports:
+      - "127.0.0.1:${CLOUD_WEB_PORT:-8080}:80"
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+    mem_limit: 96m
+    logging: *logs
+
+volumes:
+  postgres_data:
+  huggingface_cache:

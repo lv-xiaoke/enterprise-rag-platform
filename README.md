@@ -166,6 +166,10 @@ docker compose logs --since 10m api | Select-String -SimpleMatch '从页面复�
 
 实现范围与验收步骤见 [请求追踪实施计划](docs/superpowers/plans/2026-10-13-request-tracing.md)。容器需要重建镜像才能包含这些代码；宿主机回归通过不代表已有运行容器已更新。
 
+## 云端私有演示
+
+项目已部署到腾讯云 2GB 试用实例，通过 SSH 隧道访问。Web 仅绑定服务器回环地址，数据库/API 不发布端口；真实 PDF、BGE、模型流式问答、重启持久化和新库备份恢复已验收。访问与证据见 [云端部署验收记录](docs/云端部署验收记录.md)，部署、更新和恢复命令见 [部署说明](deploy/README.md)。该环境为 SSH 私有演示，没有公网网站入口。
+
 ## 已知边界
 
 - 只支持带文字层的 PDF；暂不支持 OCR、扫描件和复杂表格。

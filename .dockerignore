@@ -33,3 +33,6 @@ frontend/
 artifacts/
 output/
 tmp/
+backups/
+*.dump
+*.tar.gz
